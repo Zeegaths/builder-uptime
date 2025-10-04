@@ -1,89 +1,168 @@
-import logoDark from "./logo-dark.svg";
-import logoLight from "./logo-light.svg";
+import { useState } from 'react';
 
-export function Welcome() {
+export default function BuilderUptimeLanding() {
+  const [email, setEmail] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = () => {
+    if (email && email.includes('@')) {
+      console.log('Email submitted:', email);
+      setSubmitted(true);
+      setTimeout(() => {
+        setSubmitted(false);
+        setEmail('');
+      }, 3000);
+    }
+  };
+
   return (
-    <main className="flex items-center justify-center pt-16 pb-4">
-      <div className="flex-1 flex flex-col items-center gap-16 min-h-0">
-        <header className="flex flex-col items-center gap-9">
-          <div className="w-[500px] max-w-[100vw] p-4">
-            <img
-              src={logoLight}
-              alt="React Router"
-              className="block w-full dark:hidden"
-            />
-            <img
-              src={logoDark}
-              alt="React Router"
-              className="hidden w-full dark:block"
-            />
+    <div className="min-h-screen bg-gray-950 text-gray-100 flex flex-col">
+      {/* Header */}
+      <header className="border-b border-gray-800 bg-gray-950/50 backdrop-blur-sm sticky top-0 z-50">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-orange-500 rounded-lg flex items-center justify-center font-bold text-white">
+              ⬆
+            </div>
+            <span className="text-xl font-semibold">Builder Uptime</span>
           </div>
-        </header>
-        <div className="max-w-[300px] w-full space-y-6 px-4">
-          <nav className="rounded-3xl border border-gray-200 p-6 dark:border-gray-700 space-y-4">
-            <p className="leading-6 text-gray-700 dark:text-gray-200 text-center">
-              What&apos;s next?
-            </p>
-            <ul>
-              {resources.map(({ href, text, icon }) => (
-                <li key={href}>
-                  <a
-                    className="group flex items-center gap-3 self-stretch p-3 leading-normal text-blue-700 hover:underline dark:text-blue-500"
-                    href={href}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {icon}
-                    {text}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </nav>
+          <button 
+            onClick={() => document.getElementById('waitlist').scrollIntoView({ behavior: 'smooth' })}
+            className="px-4 py-2 bg-orange-500 text-white rounded-lg font-medium hover:bg-orange-600 transition-colors"
+          >
+            Join Waitlist
+          </button>
         </div>
-      </div>
-    </main>
+      </header>
+
+      {/* Hero Section */}
+      <main className="flex-1 flex flex-col items-center justify-center px-6 py-20">
+        <div className="max-w-4xl mx-auto text-center space-y-8">
+          {/* Status Badge */}
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 border border-cyan-500/30 rounded-full text-sm">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+            </span>
+            <span className="text-cyan-400">System Online • Building on Farcaster + Base</span>
+          </div>
+
+          {/* Main Headline */}
+          <div className="space-y-4">
+            <h1 className="text-5xl md:text-7xl font-bold tracking-tight">
+              Monitor Your Most
+              <br />
+              <span className="bg-gradient-to-r from-cyan-400 to-orange-400 bg-clip-text text-transparent">
+                Critical Infrastructure
+              </span>
+            </h1>
+            <p className="text-xl md:text-2xl text-gray-400 max-w-2xl mx-auto">
+              You monitor your apps obsessively. What about your own uptime?
+            </p>
+          </div>
+
+          {/* Value Props */}
+          <div className="grid md:grid-cols-3 gap-6 pt-8">
+            <div className="p-6 bg-gray-900/50 border border-cyan-500/20 rounded-xl space-y-2 hover:border-cyan-500/40 transition-colors">
+              <div className="text-3xl">📊</div>
+              <h3 className="font-semibold text-lg text-cyan-400">Track Daily</h3>
+              <p className="text-gray-400 text-sm">30-second check-ins. See your patterns over time.</p>
+            </div>
+            <div className="p-6 bg-gray-900/50 border border-orange-500/20 rounded-xl space-y-2 hover:border-orange-500/40 transition-colors">
+              <div className="text-3xl">🔐</div>
+              <h3 className="font-semibold text-lg text-orange-400">Own Your Data</h3>
+              <p className="text-gray-400 text-sm">Decentralized storage. Your mental health data stays yours.</p>
+            </div>
+            <div className="p-6 bg-gray-900/50 border border-cyan-500/20 rounded-xl space-y-2 hover:border-cyan-500/40 transition-colors">
+              <div className="text-3xl">⚡</div>
+              <h3 className="font-semibold text-lg text-cyan-400">Optimize Performance</h3>
+              <p className="text-gray-400 text-sm">Make better decisions. Build more sustainably.</p>
+            </div>
+          </div>
+
+          {/* Waitlist */}
+          <div id="waitlist" className="pt-12">
+            <div className="max-w-md mx-auto space-y-4">
+              <h2 className="text-2xl font-semibold">Join the Beta</h2>
+              <p className="text-gray-400">First 100 Web3 builders get lifetime access</p>
+              
+              {!submitted ? (
+                <div className="flex gap-3">
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+                    placeholder="your@email.com"
+                    className="flex-1 px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-cyan-500 transition-colors"
+                  />
+                  <button
+                    onClick={handleSubmit}
+                    className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-orange-500 text-white rounded-lg font-medium hover:from-cyan-600 hover:to-orange-600 transition-all whitespace-nowrap"
+                  >
+                    Get Early Access
+                  </button>
+                </div>
+              ) : (
+                <div className="py-3 px-4 bg-gradient-to-r from-cyan-500/10 to-orange-500/10 border border-cyan-500/30 rounded-lg text-cyan-400">
+                  ✓ You're on the list! Check your email.
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Status Indicators Demo */}
+          <div className="pt-16 space-y-4">
+            <p className="text-sm text-gray-500 uppercase tracking-wide">What's your uptime today?</p>
+            <div className="flex flex-wrap justify-center gap-4">
+              <button className="px-6 py-3 bg-cyan-500/10 border border-cyan-500/30 rounded-lg hover:bg-cyan-500/20 transition-colors">
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 bg-cyan-500 rounded-full"></span>
+                  <span className="text-cyan-400">Optimal</span>
+                </div>
+              </button>
+              <button className="px-6 py-3 bg-orange-500/10 border border-orange-500/30 rounded-lg hover:bg-orange-500/20 transition-colors">
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 bg-orange-500 rounded-full"></span>
+                  <span className="text-orange-400">Degraded</span>
+                </div>
+              </button>
+              <button className="px-6 py-3 bg-red-500/10 border border-red-500/30 rounded-lg hover:bg-red-500/20 transition-colors">
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 bg-red-500 rounded-full"></span>
+                  <span className="text-red-400">Critical</span>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* Social Proof */}
+          <div className="pt-12 space-y-4">
+            <p className="text-sm text-gray-500">Built for builders</p>
+            <div className="flex flex-wrap justify-center items-center gap-8 text-gray-600">
+              <span className="text-sm">🔗 Farcaster Native</span>
+              <span className="text-sm">⚡ Base Chain</span>
+              <span className="text-sm">🌐 Ceramic Storage</span>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t border-gray-800 py-8">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-500">
+            <div className="flex items-center gap-2">
+              <span>© 2025 Builder Uptime</span>
+            </div>
+            <div className="flex gap-6">
+              <button className="hover:text-emerald-400 transition-colors">Twitter</button>
+              <button className="hover:text-emerald-400 transition-colors">Farcaster</button>
+              <button className="hover:text-emerald-400 transition-colors">GitHub</button>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
   );
 }
-
-const resources = [
-  {
-    href: "https://reactrouter.com/docs",
-    text: "React Router Docs",
-    icon: (
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="24"
-        height="20"
-        viewBox="0 0 20 20"
-        fill="none"
-        className="stroke-gray-600 group-hover:stroke-current dark:stroke-gray-300"
-      >
-        <path
-          d="M9.99981 10.0751V9.99992M17.4688 17.4688C15.889 19.0485 11.2645 16.9853 7.13958 12.8604C3.01467 8.73546 0.951405 4.11091 2.53116 2.53116C4.11091 0.951405 8.73546 3.01467 12.8604 7.13958C16.9853 11.2645 19.0485 15.889 17.4688 17.4688ZM2.53132 17.4688C0.951566 15.8891 3.01483 11.2645 7.13974 7.13963C11.2647 3.01471 15.8892 0.951453 17.469 2.53121C19.0487 4.11096 16.9854 8.73551 12.8605 12.8604C8.73562 16.9853 4.11107 19.0486 2.53132 17.4688Z"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        />
-      </svg>
-    ),
-  },
-  {
-    href: "https://rmx.as/discord",
-    text: "Join Discord",
-    icon: (
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="24"
-        height="20"
-        viewBox="0 0 24 20"
-        fill="none"
-        className="stroke-gray-600 group-hover:stroke-current dark:stroke-gray-300"
-      >
-        <path
-          d="M15.0686 1.25995L14.5477 1.17423L14.2913 1.63578C14.1754 1.84439 14.0545 2.08275 13.9422 2.31963C12.6461 2.16488 11.3406 2.16505 10.0445 2.32014C9.92822 2.08178 9.80478 1.84975 9.67412 1.62413L9.41449 1.17584L8.90333 1.25995C7.33547 1.51794 5.80717 1.99419 4.37748 2.66939L4.19 2.75793L4.07461 2.93019C1.23864 7.16437 0.46302 11.3053 0.838165 15.3924L0.868838 15.7266L1.13844 15.9264C2.81818 17.1714 4.68053 18.1233 6.68582 18.719L7.18892 18.8684L7.50166 18.4469C7.96179 17.8268 8.36504 17.1824 8.709 16.4944L8.71099 16.4904C10.8645 17.0471 13.128 17.0485 15.2821 16.4947C15.6261 17.1826 16.0293 17.8269 16.4892 18.4469L16.805 18.8725L17.3116 18.717C19.3056 18.105 21.1876 17.1751 22.8559 15.9238L23.1224 15.724L23.1528 15.3923C23.5873 10.6524 22.3579 6.53306 19.8947 2.90714L19.7759 2.73227L19.5833 2.64518C18.1437 1.99439 16.6386 1.51826 15.0686 1.25995ZM16.6074 10.7755L16.6074 10.7756C16.5934 11.6409 16.0212 12.1444 15.4783 12.1444C14.9297 12.1444 14.3493 11.6173 14.3493 10.7877C14.3493 9.94885 14.9378 9.41192 15.4783 9.41192C16.0471 9.41192 16.6209 9.93851 16.6074 10.7755ZM8.49373 12.1444C7.94513 12.1444 7.36471 11.6173 7.36471 10.7877C7.36471 9.94885 7.95323 9.41192 8.49373 9.41192C9.06038 9.41192 9.63892 9.93712 9.6417 10.7815C9.62517 11.6239 9.05462 12.1444 8.49373 12.1444Z"
-          strokeWidth="1.5"
-        />
-      </svg>
-    ),
-  },
-];
