@@ -101,9 +101,11 @@ export default function BuilderUptimeLanding() {
       <header className="border-b border-gray-800 bg-gray-950/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 via-cyan-400 to-orange-500 rounded-xl flex items-center justify-center font-bold text-white text-xl shadow-lg shadow-cyan-500/20">
-              ⬆
-            </div>
+            <img 
+              src="./logo.png" 
+              alt="Builder Uptime Logo" 
+              className="w-10 h-10 rounded-xl shadow-lg shadow-cyan-500/20"
+            />
             <div>
               <span className="text-xl font-bold">Builder Uptime</span>
               <div className="text-xs text-gray-500">Task-Driven Productivity for Builders</div>
@@ -585,9 +587,11 @@ export default function BuilderUptimeLanding() {
         <div className="max-w-6xl mx-auto px-6">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-500">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-gradient-to-br from-cyan-500 to-orange-500 rounded-lg flex items-center justify-center font-bold text-white text-xs">
-                ⬆
-              </div>
+              <img 
+                src="./logo.png" 
+                alt="Builder Uptime Logo" 
+                className="w-6 h-6 rounded-lg"
+              />
               <span>© 2025 Builder Uptime</span>
             </div>
             <div className="flex gap-6">
