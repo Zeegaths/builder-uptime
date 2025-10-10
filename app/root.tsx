@@ -31,8 +31,22 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta 
-          name="fc:miniapp" 
+
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              // Prevent multiple wallet conflicts
+              if (typeof window !== 'undefined') {
+                window.addEventListener('eip6963:announceProvider', (event) => {
+                  console.log('Provider detected:', event.detail);
+                });
+              }
+            `,
+          }}
+        />
+
+        <meta
+          name="fc:miniapp"
           content={JSON.stringify({
             version: "next",
             imageUrl: "https://builderuptime.xyz/uptime.png",
@@ -44,7 +58,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 url: "https://builderuptime.xyz"
               }
             }
-          })} 
+          })}
         />
         <Meta />
         <Links />
@@ -60,13 +74,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      import('@farcaster/miniapp-sdk').then(({ sdk }) => {
-        sdk.actions.ready();
-      }).catch(err => {
-        console.log('Farcaster SDK not available:', err);
-      });
-    }
+    const initFarcaster = async () => {
+      try {
+        if (typeof window !== 'undefined') {
+          const { sdk } = await import('@farcaster/miniapp-sdk');
+          console.log('Calling Farcaster SDK ready...');
+          sdk.actions.ready();
+          console.log('Farcaster SDK ready called!');
+        }
+      } catch (err) {
+        console.error('Farcaster SDK error:', err);
+      }
+    };
+
+    initFarcaster();
   }, []);
 
   return (
@@ -83,7 +104,7 @@ export default function App() {
           createOnLogin: 'users-without-wallets',
         },
         // Configure supported wallets
-        loginMethods: ['email', 'wallet'],       
+        loginMethods: ['email', 'wallet'],
       }}
     >
       <Outlet />
