@@ -7,6 +7,7 @@ import {
   ScrollRestoration,
 } from "react-router";
 import { useEffect } from "react";
+import { PrivyProvider } from '@privy-io/react-auth';
 
 import type { Route } from "./+types/root";
 import "./app.css";
@@ -59,9 +60,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   useEffect(() => {
-    // Only run in browser, not on server
     if (typeof window !== 'undefined') {
-      // Dynamic import to avoid loading on server
       import('@farcaster/miniapp-sdk').then(({ sdk }) => {
         sdk.actions.ready();
       }).catch(err => {
@@ -70,7 +69,26 @@ export default function App() {
     }
   }, []);
 
-  return <Outlet />;
+  return (
+    <PrivyProvider
+      appId={import.meta.env.VITE_PRIVY_APP_ID}
+      config={{
+        // Appearance customization
+        appearance: {
+          theme: 'dark',
+          accentColor: '#06b6d4', // Cyan to match your design
+        },
+        // Create embedded wallets for users who don't have a wallet
+        embeddedWallets: {
+          createOnLogin: 'users-without-wallets',
+        },
+        // Configure supported wallets
+        loginMethods: ['email', 'wallet'],       
+      }}
+    >
+      <Outlet />
+    </PrivyProvider>
+  );
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
