@@ -248,7 +248,7 @@ export default function MinimalBuilderUptime() {
             <h1 className="text-2xl md:text-4xl lg:text-5xl font-black mb-2 md:mb-3 leading-tight px-2">
               Track What <span className="bg-gradient-to-r from-cyan-400 via-cyan-300 to-orange-400 bg-clip-text text-transparent">Actually</span> Ships
             </h1>
-            <p className="text-gray-400 text-sm md:text-base px-4">
+            <p className="text-gray-400 text-sm md:text-base px-4 hidden md:block">
               Tasks · Energy · Focus · Sustainable Pace
             </p>
           </div>
