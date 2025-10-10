@@ -1,608 +1,562 @@
 import { useState, useEffect } from 'react';
 
-export default function BuilderUptimeLanding() {
-  const [email, setEmail] = useState('');
-  const [submitted, setSubmitted] = useState(false);
-  const [activeTab, setActiveTab] = useState('tasks');
+export default function MinimalBuilderUptime() {
   const [taskInput, setTaskInput] = useState('');
-  const [demoTasks, setDemoTasks] = useState([
-    { id: 1, text: 'Fix authentication bug', completed: true, blocker: null },
-    { id: 2, text: 'Deploy smart contract to testnet', completed: true, blocker: null },
-    { id: 3, text: 'Implement Farcaster frames', completed: false, blocker: 'Unclear documentation' },
-    { id: 4, text: 'Add MetaMask delegation', completed: false, blocker: null },
+  const [tasks, setTasks] = useState([
+    { id: 1, text: 'Fix auth bug', completed: true, hasBlocker: false },
+    { id: 2, text: 'Deploy contract', completed: true, hasBlocker: false },
+    { id: 3, text: 'Implement frames', completed: false, hasBlocker: true },
   ]);
-  const [blockerType, setBlockerType] = useState(null);
+  const [energy, setEnergy] = useState(4);
+  const [focusSeconds, setFocusSeconds] = useState(0);
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [lastBreak, setLastBreak] = useState(null);
+  const [showBreakReminder, setShowBreakReminder] = useState(false);
+  const [timelineView, setTimelineView] = useState('week'); // 'day', 'week', 'month', 'year'
 
-  const blockerTypes = [
-    { type: 'bug', label: '🐛 Bug/Technical Issue', color: 'red' },
-    { type: 'clarity', label: '❓ Unclear Requirements', color: 'orange' },
-    { type: 'resources', label: '📚 Missing Info/Resources', color: 'yellow' },
-    { type: 'motivation', label: '😓 Low Energy/Motivation', color: 'purple' },
-    { type: 'external', label: '🌍 External Distractions', color: 'blue' },
-  ];
-
-  const productivityTips = [
-    {
-      icon: '📋',
-      title: 'Smart Task Planning',
-      desc: 'AI breaks down your goals into daily actionable tasks based on your energy patterns',
-      demo: 'You work best 9-11am? High-priority tasks get scheduled there automatically.'
-    },
-    {
-      icon: '🐛',
-      title: 'Blocker Detection',
-      flag: 'Track bugs, unclear specs, missing resources in real-time',
-      demo: 'Stuck for 2+ hours? AI suggests: "Ask in Discord" or "Take a 15min break"'
-    },
-    {
-      icon: '🎯',
-      title: 'Completion Tracking',
-      desc: 'Your uptime score = tasks completed + quality of work + sustainable pace',
-      demo: '5/7 tasks done + no burnout = 85% uptime. Better than 7/7 + exhausted.'
-    },
-    {
-      icon: '🤝',
-      title: 'Dev Community Support',
-      desc: 'Get unstuck faster by connecting with devs who solved similar blockers',
-      demo: 'Stuck on Web3Auth? Connect with 3 builders who implemented it this week.'
+  useEffect(() => {
+    let interval;
+    if (isTimerRunning) {
+      interval = setInterval(() => {
+        setFocusSeconds(prev => {
+          const newSeconds = prev + 1;
+          // Show reminder at 90 minutes (5400 seconds)
+          if (newSeconds === 5400) {
+            setShowBreakReminder(true);
+          }
+          // Show reminder every 30 minutes after that
+          if (newSeconds > 5400 && (newSeconds - 5400) % 1800 === 0) {
+            setShowBreakReminder(true);
+          }
+          return newSeconds;
+        });
+      }, 1000);
     }
-  ];
-
-  const weekData = [
-    { day: 'Mon', tasks: 4, completed: 3, blockers: 1, uptime: 75 },
-    { day: 'Tue', tasks: 5, completed: 5, blockers: 0, uptime: 95 },
-    { day: 'Wed', tasks: 6, completed: 4, blockers: 2, uptime: 65 },
-    { day: 'Thu', tasks: 5, completed: 5, blockers: 0, uptime: 90 },
-    { day: 'Fri', tasks: 4, completed: 3, blockers: 1, uptime: 70 },
-    { day: 'Sat', tasks: 3, completed: 3, blockers: 0, uptime: 85 },
-    { day: 'Sun', tasks: 2, completed: 2, blockers: 0, uptime: 80 },
-  ];
+    return () => clearInterval(interval);
+  }, [isTimerRunning]);
 
   const handleAddTask = () => {
     if (taskInput.trim()) {
-      setDemoTasks([...demoTasks, {
-        id: demoTasks.length + 1,
+      setTasks([...tasks, {
+        id: Date.now(),
         text: taskInput,
         completed: false,
-        blocker: null
+        hasBlocker: false
       }]);
       setTaskInput('');
     }
   };
 
   const toggleTask = (id) => {
-    setDemoTasks(demoTasks.map(task => 
+    setTasks(tasks.map(task => 
       task.id === id ? { ...task, completed: !task.completed } : task
     ));
   };
 
-  const calculateUptime = () => {
-    const completed = demoTasks.filter(t => t.completed).length;
-    const total = demoTasks.length;
-    const blockers = demoTasks.filter(t => t.blocker).length;
-    const base = (completed / total) * 100;
-    const penalty = blockers * 10;
-    return Math.max(0, Math.round(base - penalty));
+  const toggleBlocker = (id) => {
+    setTasks(tasks.map(task => 
+      task.id === id ? { ...task, hasBlocker: !task.hasBlocker } : task
+    ));
   };
 
-  const handleSubmit = () => {
-    if (email && email.includes('@')) {
-      setSubmitted(true);
-      setTimeout(() => {
-        setSubmitted(false);
-        setEmail('');
-      }, 3000);
-    }
+  const takeBreak = () => {
+    setLastBreak(Date.now());
+    setIsTimerRunning(false);
+    setFocusSeconds(0);
+    setShowBreakReminder(false);
   };
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const calculateUptime = () => {
+    if (tasks.length === 0) return 0;
+    const completed = tasks.filter(t => t.completed).length;
+    const taskScore = (completed / tasks.length) * 50;
+    const energyScore = (energy / 5) * 25;
+    const blockers = tasks.filter(t => t.hasBlocker && !t.completed).length;
+    const blockerPenalty = blockers * 10;
+    const focusMinutes = Math.floor(focusSeconds / 60);
+    const sustainableBonus = (focusMinutes > 120 || lastBreak) ? 0 : 10;
+    const breakBonus = lastBreak ? 15 : 0;
+    const total = taskScore + energyScore - blockerPenalty + sustainableBonus + breakBonus;
+    return Math.max(0, Math.min(100, Math.round(total)));
+  };
+
+  const uptime = calculateUptime();
+
+  const energyEmojis = ['😫', '😔', '😐', '😊', '🚀'];
+  const energyLabels = ['Exhausted', 'Low', 'Okay', 'Good', 'Peak'];
+
+  // Mock timeline data
+  const timelineData = {
+    day: [
+      { label: '9am', uptime: 0 },
+      { label: '10am', uptime: 65 },
+      { label: '11am', uptime: 78 },
+      { label: '12pm', uptime: 85 },
+      { label: '1pm', uptime: 70 },
+      { label: '2pm', uptime: 82 },
+      { label: '3pm', uptime: 88 },
+      { label: '4pm', uptime: 75 },
+      { label: 'Now', uptime: uptime },
+    ],
+    week: [
+      { label: 'Mon', uptime: 75, tasks: 12, energy: 4 },
+      { label: 'Tue', uptime: 85, tasks: 15, energy: 5 },
+      { label: 'Wed', uptime: 68, tasks: 10, energy: 3 },
+      { label: 'Thu', uptime: 92, tasks: 18, energy: 5 },
+      { label: 'Fri', uptime: 78, tasks: 14, energy: 4 },
+      { label: 'Sat', uptime: 65, tasks: 8, energy: 3 },
+      { label: 'Today', uptime: uptime, tasks: tasks.filter(t => t.completed).length, energy: energy },
+    ],
+    month: [
+      { label: 'Week 1', uptime: 78 },
+      { label: 'Week 2', uptime: 85 },
+      { label: 'Week 3', uptime: 72 },
+      { label: 'Week 4', uptime: 88 },
+    ],
+    year: [
+      { label: 'Jan', uptime: 75 },
+      { label: 'Feb', uptime: 82 },
+      { label: 'Mar', uptime: 78 },
+      { label: 'Apr', uptime: 85 },
+      { label: 'May', uptime: 90 },
+      { label: 'Jun', uptime: 87 },
+      { label: 'Jul', uptime: 83 },
+      { label: 'Aug', uptime: 88 },
+      { label: 'Sep', uptime: 92 },
+      { label: 'Oct', uptime: 85 },
+      { label: 'Nov', uptime: 80 },
+      { label: 'Dec', uptime: uptime },
+    ]
+  };
+
+  const currentData = timelineData[timelineView];
+  const averageUptime = Math.round(currentData.reduce((sum, d) => sum + d.uptime, 0) / currentData.length);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-950 via-gray-900 to-gray-950 text-gray-100">
+    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black text-white">
+      {/* Ambient background effects */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-orange-500/5 rounded-full blur-3xl"></div>
+      </div>
+
       {/* Header */}
-      <header className="border-b border-gray-800 bg-gray-950/80 backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+      <header className="relative border-b border-gray-800/50 bg-black/40 backdrop-blur-xl sticky top-0 z-50">
+        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img 
               src="./logo.png" 
               alt="Builder Uptime Logo" 
-              className="w-10 h-10 rounded-xl shadow-lg shadow-cyan-500/20"
+              className="w-10 h-10 rounded-xl shadow-lg shadow-cyan-500/30"
             />
             <div>
-              <span className="text-xl font-bold">Builder Uptime</span>
-              <div className="text-xs text-gray-500">Task-Driven Productivity for Builders</div>
+              <div className="font-bold text-base">Builder Uptime</div>
+              <div className="text-xs text-gray-500">Real Productivity Tracking</div>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-cyan-500/10 border border-cyan-500/30 rounded-full text-xs">
-              <span className="text-cyan-400">⚕️</span>
-              <span className="text-gray-400">Backed by behavioral science</span>
-            </div>
-            <button 
-              onClick={() => document.getElementById('waitlist').scrollIntoView({ behavior: 'smooth' })}
-              className="px-6 py-2.5 bg-gradient-to-r from-cyan-500 to-orange-500 text-white rounded-lg font-medium hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
-            >
-              Connect Wallet
-            </button>
-          </div>
+          <button className="px-5 py-2 bg-gradient-to-r from-cyan-500/20 to-orange-500/20 border border-cyan-500/50 rounded-xl text-sm font-medium text-cyan-400 hover:from-cyan-500/30 hover:to-orange-500/30 hover:shadow-lg hover:shadow-cyan-500/20 transition-all duration-300">
+            Connect Wallet
+          </button>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="relative px-6 py-24 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-cyan-500/5 via-transparent to-transparent pointer-events-none" />
-        
-        <div className="max-w-6xl mx-auto relative">
-          <div className="text-center space-y-8">
-            <div className="inline-flex items-center gap-3 px-5 py-2.5 bg-gradient-to-r from-cyan-950/50 to-orange-950/50 border border-cyan-500/30 rounded-full text-sm backdrop-blur-sm">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500"></span>
-              </span>
-              <span className="text-cyan-400 font-medium">99.99% uptime or we're not doing it right</span>
-            </div>
-
-            <div className="space-y-6">
-              <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-tight">
-                Build at Peak Performance
-                <br />
-                <span className="bg-gradient-to-r from-cyan-400 via-cyan-300 to-orange-400 bg-clip-text text-transparent">
-                  Without the Burnout
-                </span>
-              </h1>
-              <p className="text-xl md:text-2xl text-gray-400 max-w-3xl mx-auto leading-relaxed">
-                Track what actually matters: <span className="text-cyan-400 font-semibold">tasks shipped</span>, <span className="text-orange-400 font-semibold">blockers crushed</span>, <span className="text-white font-semibold">energy sustained</span>.<br />
-                AI-powered productivity OS for builders who want to <span className="text-cyan-400">perform at their peak</span>.
-              </p>
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-              <button 
-                onClick={() => document.getElementById('demo').scrollIntoView({ behavior: 'smooth' })}
-                className="px-8 py-4 bg-gradient-to-r from-cyan-500 to-orange-500 text-white rounded-xl font-semibold text-lg hover:shadow-2xl hover:shadow-cyan-500/30 transform hover:scale-105 transition-all"
-              >
-                Try Live Demo →
-              </button>
-              <button className="px-8 py-4 bg-gray-800 border border-gray-700 text-white rounded-xl font-semibold text-lg hover:bg-gray-700 hover:border-cyan-500/50 transition-all">
-                View on GitHub
-              </button>
-            </div>
-
-            {/* Real Builder Quote */}
-            <div className="pt-12 max-w-3xl mx-auto">
-              <div className="p-6 bg-gradient-to-br from-gray-900/80 to-gray-800/80 border border-cyan-500/20 rounded-2xl backdrop-blur-sm">
-                <div className="flex items-start gap-4">
-                  <div className="text-3xl">💬</div>
-                  <div className="flex-1 text-left">
-                    <p className="text-gray-300 italic mb-3">
-                      "Uptime for me is determined by tasks completed. I want to track bugs, unclear requirements, and getting unstuck faster. This shouldn't be just mood tracking to an AI."
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm text-gray-500">— Real builder feedback</div>
-                      <div className="text-cyan-400 font-semibold">We built this for you ↓</div>
-                    </div>
-                  </div>
+      {/* Break Reminder Notification */}
+      {showBreakReminder && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 animate-bounce">
+          <div className="bg-gradient-to-r from-green-500/95 to-emerald-500/95 backdrop-blur-xl border-2 border-green-400 rounded-2xl shadow-2xl shadow-green-500/50 p-6 max-w-md">
+            <div className="flex items-start gap-4">
+              <div className="text-4xl">🌱</div>
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-white mb-2">Time for a Break!</h3>
+                <p className="text-green-50 text-sm mb-4">
+                  You've been focusing for {Math.floor(focusSeconds / 60)} minutes. Take a 15-20 minute break to stay productive!
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={takeBreak}
+                    className="flex-1 px-4 py-2 bg-white text-green-600 rounded-xl font-bold hover:bg-green-50 transition-all duration-300"
+                  >
+                    Take Break
+                  </button>
+                  <button
+                    onClick={() => setShowBreakReminder(false)}
+                    className="px-4 py-2 bg-green-600/30 text-white rounded-xl font-medium hover:bg-green-600/50 transition-all duration-300"
+                  >
+                    Later
+                  </button>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </section>
+      )}
 
-      {/* Interactive Demo */}
-      <section id="demo" className="px-6 py-24 bg-gradient-to-b from-gray-900 to-gray-950">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center space-y-4 mb-12">
-            <h2 className="text-4xl md:text-5xl font-bold">
-              See How It <span className="text-cyan-400">Actually Works</span>
-            </h2>
-            <p className="text-xl text-gray-400">Add tasks. Track blockers. Watch your uptime update in real-time.</p>
+      {/* Hero with Live Uptime */}
+      <section className="relative px-4 py-12 max-w-4xl mx-auto">
+        <div className="text-center space-y-8">
+          {/* Live Uptime Display */}
+          <div className="relative inline-block">
+            {/* Glow effect */}
+            <div className={`absolute inset-0 blur-2xl opacity-30 ${
+              uptime >= 80 ? 'bg-cyan-500' : uptime >= 50 ? 'bg-orange-500' : 'bg-red-500'
+            }`}></div>
+            
+            <svg className="relative w-40 h-40 mx-auto transform -rotate-90">
+              <defs>
+                <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#06b6d4" />
+                  <stop offset="100%" stopColor="#f97316" />
+                </linearGradient>
+              </defs>
+              <circle
+                cx="80"
+                cy="80"
+                r="70"
+                stroke="currentColor"
+                strokeWidth="8"
+                fill="none"
+                className="text-gray-800/50"
+              />
+              <circle
+                cx="80"
+                cy="80"
+                r="70"
+                stroke="url(#progressGradient)"
+                strokeWidth="8"
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray={`${2 * Math.PI * 70}`}
+                strokeDashoffset={`${2 * Math.PI * 70 * (1 - uptime / 100)}`}
+                className="transition-all duration-700 ease-out drop-shadow-lg"
+                style={{ filter: 'drop-shadow(0 0 8px rgba(6, 182, 212, 0.5))' }}
+              />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-5xl font-black bg-gradient-to-r from-cyan-400 to-orange-400 bg-clip-text text-transparent">{uptime}%</span>
+              <span className="text-xs text-gray-400 font-medium tracking-wide uppercase mt-1">Uptime</span>
+            </div>
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-8">
-            {/* Task Tracker */}
-            <div className="lg:col-span-2 bg-gradient-to-br from-gray-900 to-gray-800 border border-cyan-500/20 rounded-2xl p-8 space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-2xl font-bold">Today's Tasks</h3>
-                  <p className="text-gray-400 text-sm">Add what you're working on</p>
-                </div>
-                <div className="text-right">
-                  <div className="text-4xl font-bold text-cyan-400">{calculateUptime()}%</div>
-                  <div className="text-xs text-gray-500">Current Uptime</div>
-                </div>
-              </div>
+          {/* Catchphrase */}
+          <div className="inline-flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-cyan-950/60 to-orange-950/60 border border-cyan-500/30 rounded-full backdrop-blur-sm shadow-lg shadow-cyan-500/10">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500"></span>
+            </span>
+            <span className="text-cyan-400 font-semibold text-sm">99.99% uptime or we're not doing it right</span>
+          </div>
 
-              {/* Add Task Input */}
-              <div className="flex gap-3">
+          <div>
+            <h1 className="text-4xl md:text-5xl font-black mb-3 leading-tight">
+              Track What <span className="bg-gradient-to-r from-cyan-400 via-cyan-300 to-orange-400 bg-clip-text text-transparent">Actually</span> Ships
+            </h1>
+            <p className="text-gray-400 text-base max-w-lg mx-auto">
+              Tasks · Energy · Focus · Sustainable Pace
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Productivity Factors Grid */}
+      <section className="relative px-4 pb-8 max-w-4xl mx-auto">
+        <div className="grid grid-cols-2 gap-4">
+          {/* Energy Level */}
+          <div className="group relative bg-gradient-to-br from-gray-900/80 to-gray-800/80 border border-gray-700/50 rounded-2xl p-5 backdrop-blur-sm hover:border-cyan-500/50 transition-all duration-300 hover:shadow-xl hover:shadow-cyan-500/10">
+            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/0 to-cyan-500/0 group-hover:from-cyan-500/5 group-hover:to-transparent rounded-2xl transition-all duration-300"></div>
+            <div className="relative">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="text-xs font-semibold text-gray-400 tracking-wide uppercase">Energy Level</div>
+              </div>
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-4xl">{energyEmojis[energy - 1]}</span>
+                <span className="text-lg font-bold text-cyan-400">{energyLabels[energy - 1]}</span>
+              </div>
+              <div className="relative">
                 <input
-                  type="text"
-                  value={taskInput}
-                  onChange={(e) => setTaskInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
-                  placeholder="What are you building today?"
-                  className="flex-1 px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-cyan-500 transition-colors text-sm"
+                  type="range"
+                  min="1"
+                  max="5"
+                  value={energy}
+                  onChange={(e) => setEnergy(parseInt(e.target.value))}
+                  className="w-full h-2 bg-gray-800 rounded-full appearance-none cursor-pointer"
+                  style={{
+                    background: `linear-gradient(to right, #06b6d4 0%, #06b6d4 ${(energy - 1) * 25}%, #1f2937 ${(energy - 1) * 25}%, #1f2937 100%)`
+                  }}
                 />
-                <button
-                  onClick={handleAddTask}
-                  className="px-6 py-3 bg-cyan-500 text-white rounded-lg font-medium hover:bg-cyan-600 transition-colors"
-                >
-                  Add
-                </button>
-              </div>
-
-              {/* Task List */}
-              <div className="space-y-2">
-                {demoTasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className={`p-4 rounded-lg border-2 transition-all ${
-                      task.completed 
-                        ? 'bg-cyan-500/10 border-cyan-500/30' 
-                        : task.blocker 
-                        ? 'bg-red-500/10 border-red-500/30'
-                        : 'bg-gray-800 border-gray-700'
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <button
-                        onClick={() => toggleTask(task.id)}
-                        className={`mt-1 w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
-                          task.completed 
-                            ? 'bg-cyan-500 border-cyan-500' 
-                            : 'border-gray-600 hover:border-cyan-500'
-                        }`}
-                      >
-                        {task.completed && <span className="text-white text-xs">✓</span>}
-                      </button>
-                      <div className="flex-1">
-                        <div className={`${task.completed ? 'line-through text-gray-500' : 'text-gray-200'}`}>
-                          {task.text}
-                        </div>
-                        {task.blocker && (
-                          <div className="mt-2 flex items-center gap-2 text-xs text-red-400">
-                            <span>🚨</span>
-                            <span>Blocker: {task.blocker}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="pt-4 border-t border-gray-700 flex items-center justify-between text-sm">
-                <div className="text-gray-400">
-                  {demoTasks.filter(t => t.completed).length} of {demoTasks.length} completed
-                  {demoTasks.filter(t => t.blocker).length > 0 && (
-                    <span className="ml-3 text-red-400">• {demoTasks.filter(t => t.blocker).length} blocker(s)</span>
-                  )}
-                </div>
               </div>
             </div>
+          </div>
 
-            {/* Blocker Tracker */}
-            <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-2xl p-8 space-y-6">
-              <div>
-                <h3 className="text-xl font-bold mb-2">What's Blocking You?</h3>
-                <p className="text-gray-400 text-sm">AI helps you get unstuck</p>
+          {/* Focus Time */}
+          <div className="group relative bg-gradient-to-br from-gray-900/80 to-gray-800/80 border border-gray-700/50 rounded-2xl p-5 backdrop-blur-sm hover:border-orange-500/50 transition-all duration-300 hover:shadow-xl hover:shadow-orange-500/10">
+            {focusSeconds >= 4800 && focusSeconds < 5400 && (
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full animate-pulse"></div>
+            )}
+            {focusSeconds >= 5400 && (
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+            )}
+            <div className="absolute inset-0 bg-gradient-to-br from-orange-500/0 to-orange-500/0 group-hover:from-orange-500/5 group-hover:to-transparent rounded-2xl transition-all duration-300"></div>
+            <div className="relative">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="text-xs font-semibold text-gray-400 tracking-wide uppercase">Focus Session</div>
+                {focusSeconds >= 4800 && focusSeconds < 5400 && (
+                  <span className="text-xs text-yellow-400">• Break soon</span>
+                )}
+                {focusSeconds >= 5400 && (
+                  <span className="text-xs text-green-400">• Break recommended</span>
+                )}
               </div>
-
-              <div className="space-y-3">
-                {blockerTypes.map((blocker) => (
-                  <button
-                    key={blocker.type}
-                    onClick={() => setBlockerType(blocker.type)}
-                    className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
-                      blockerType === blocker.type
-                        ? `bg-${blocker.color}-500/20 border-${blocker.color}-500`
-                        : 'bg-gray-800 border-gray-700 hover:border-gray-600'
-                    }`}
-                  >
-                    <div className="font-medium text-sm">{blocker.label}</div>
-                  </button>
-                ))}
-              </div>
-
-              {blockerType && (
-                <div className="p-4 bg-cyan-950/50 border border-cyan-500/30 rounded-lg space-y-3 animate-fadeIn">
-                  <div className="text-sm font-semibold text-cyan-400">AI Suggestion:</div>
-                  {blockerType === 'bug' && (
-                    <div className="text-sm text-gray-300">
-                      • Log the error details<br />
-                      • Check similar issues on GitHub<br />
-                      • Ask in project Discord<br />
-                      • Take a 15min break if stuck 2+ hours
-                    </div>
-                  )}
-                  {blockerType === 'clarity' && (
-                    <div className="text-sm text-gray-300">
-                      • Break down the requirement<br />
-                      • Sketch out the user flow<br />
-                      • Message project lead for clarification<br />
-                      • Start with MVP version
-                    </div>
-                  )}
-                  {blockerType === 'resources' && (
-                    <div className="text-sm text-gray-300">
-                      • Check official docs first<br />
-                      • Look for similar implementations<br />
-                      • Connect with builder who solved this<br />
-                      • 3 devs implemented this feature this week →
-                    </div>
-                  )}
-                  {blockerType === 'motivation' && (
-                    <div className="text-sm text-gray-300">
-                      • You've been heads-down for 3 hours<br />
-                      • Take a 20min walk<br />
-                      • Switch to a different task<br />
-                      • Come back with fresh energy
-                    </div>
-                  )}
-                  {blockerType === 'external' && (
-                    <div className="text-sm text-gray-300">
-                      • Block distracting apps for 2 hours<br />
-                      • Try a different environment<br />
-                      • Communicate you're in deep work<br />
-                      • Schedule focus blocks on calendar
-                    </div>
-                  )}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-black bg-gradient-to-r from-orange-400 to-cyan-400 bg-clip-text text-transparent">{formatTime(focusSeconds)}</span>
                 </div>
+                <button
+                  onClick={() => setIsTimerRunning(!isTimerRunning)}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 ${
+                    isTimerRunning 
+                      ? 'bg-gradient-to-r from-orange-500/20 to-red-500/20 text-orange-400 border border-orange-500/50 shadow-lg shadow-orange-500/20' 
+                      : 'bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-400 border border-cyan-500/50 hover:shadow-lg hover:shadow-cyan-500/20'
+                  }`}
+                >
+                  {isTimerRunning ? '⏸ Pause' : '▶ Start'}
+                </button>
+              </div>
+              {focusSeconds >= 5400 && (
+                <button
+                  onClick={takeBreak}
+                  className="w-full px-4 py-2.5 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/50 rounded-xl text-sm font-semibold text-green-400 hover:from-green-500/30 hover:to-emerald-500/30 transition-all duration-300 hover:shadow-lg hover:shadow-green-500/20"
+                >
+                  🌱 Take Break
+                </button>
               )}
             </div>
           </div>
-
-          {/* Weekly Progress */}
-          <div className="mt-8 bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-2xl p-8">
-            <h3 className="text-2xl font-bold mb-6">Your Week at a Glance</h3>
-            <div className="grid grid-cols-7 gap-4">
-              {weekData.map((day, idx) => (
-                <div key={idx} className="text-center space-y-3">
-                  <div className="text-sm text-gray-500 font-medium">{day.day}</div>
-                  <div className="relative">
-                    <svg className="w-20 h-20 mx-auto transform -rotate-90">
-                      <circle
-                        cx="40"
-                        cy="40"
-                        r="35"
-                        stroke="currentColor"
-                        strokeWidth="8"
-                        fill="none"
-                        className="text-gray-800"
-                      />
-                      <circle
-                        cx="40"
-                        cy="40"
-                        r="35"
-                        stroke="currentColor"
-                        strokeWidth="8"
-                        fill="none"
-                        strokeDasharray={`${2 * Math.PI * 35}`}
-                        strokeDashoffset={`${2 * Math.PI * 35 * (1 - day.uptime / 100)}`}
-                        className={`${
-                          day.uptime >= 85 ? 'text-cyan-500' :
-                          day.uptime >= 60 ? 'text-orange-500' :
-                          'text-red-500'
-                        } transition-all`}
-                      />
-                    </svg>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-lg font-bold">{day.uptime}%</span>
-                    </div>
-                  </div>
-                  <div className="text-xs space-y-1">
-                    <div className="text-cyan-400">{day.completed}/{day.tasks} done</div>
-                    {day.blockers > 0 && (
-                      <div className="text-red-400">{day.blockers} blocker</div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       </section>
 
-      {/* How It Works */}
-      <section className="px-6 py-24 bg-gray-950">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center space-y-4 mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold">
-              Built on <span className="text-orange-400">Real Builder Needs</span>
-            </h2>
-            <p className="text-xl text-gray-400">Not just mood tracking. Actual productivity tools.</p>
+      {/* Task Tracker */}
+      <section className="relative px-4 pb-12 max-w-4xl mx-auto space-y-5">
+        <div className="bg-gradient-to-br from-gray-900/80 to-gray-800/80 border border-gray-700/50 rounded-2xl p-6 backdrop-blur-sm shadow-2xl">
+          
+          {/* Add Task */}
+          <div className="flex gap-3 mb-6">
+            <input
+              type="text"
+              value={taskInput}
+              onChange={(e) => setTaskInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
+              placeholder="What are you building today?"
+              className="flex-1 px-4 py-3.5 bg-black/50 border border-gray-700 rounded-xl focus:outline-none focus:border-cyan-500 focus:shadow-lg focus:shadow-cyan-500/20 transition-all duration-300 text-sm placeholder-gray-600"
+            />
+            <button
+              onClick={handleAddTask}
+              className="px-6 py-3.5 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl font-bold hover:from-cyan-400 hover:to-blue-400 transition-all duration-300 text-sm shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 hover:scale-105"
+            >
+              Add
+            </button>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8">
-            {productivityTips.map((tip, idx) => (
+          {/* Task List */}
+          <div className="space-y-2.5">
+            {tasks.map((task) => (
               <div
-                key={idx}
-                className="group p-8 bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-2xl hover:border-cyan-500/50 hover:shadow-xl hover:shadow-cyan-500/10 transition-all"
+                key={task.id}
+                className={`group p-4 rounded-xl border-2 transition-all duration-300 ${
+                  task.completed 
+                    ? 'bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border-cyan-500/40 shadow-lg shadow-cyan-500/10' 
+                    : task.hasBlocker
+                    ? 'bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/40 shadow-lg shadow-red-500/10'
+                    : 'bg-black/40 border-gray-700 hover:border-gray-600 hover:bg-black/60'
+                }`}
               >
-                <div className="text-5xl mb-4">{tip.icon}</div>
-                <h3 className="text-2xl font-bold mb-3 group-hover:text-cyan-400 transition-colors">
-                  {tip.title}
-                </h3>
-                <p className="text-gray-400 mb-4">{tip.desc}</p>
-                <div className="p-4 bg-gray-800/50 border border-cyan-500/20 rounded-lg text-sm">
-                  <div className="text-gray-500 mb-1">Example:</div>
-                  <div className="text-cyan-400">{tip.demo}</div>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => toggleTask(task.id)}
+                    className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all duration-300 flex-shrink-0 ${
+                      task.completed 
+                        ? 'bg-gradient-to-br from-cyan-500 to-blue-500 border-cyan-500 shadow-lg shadow-cyan-500/50' 
+                        : 'border-gray-600 hover:border-cyan-500 hover:scale-110'
+                    }`}
+                  >
+                    {task.completed && <span className="text-white text-xs font-bold">✓</span>}
+                  </button>
+                  <span className={`flex-1 text-sm font-medium transition-all duration-300 ${
+                    task.completed ? 'line-through text-gray-500' : 'text-gray-200'
+                  }`}>
+                    {task.text}
+                  </span>
+                  <button
+                    onClick={() => toggleBlocker(task.id)}
+                    className={`text-lg px-2.5 py-1 rounded-lg transition-all duration-300 ${
+                      task.hasBlocker
+                        ? 'bg-gradient-to-r from-red-500/20 to-orange-500/20 border border-red-500/50 shadow-lg shadow-red-500/20 scale-110'
+                        : 'text-gray-600 hover:text-gray-400 hover:scale-110'
+                    }`}
+                  >
+                    {task.hasBlocker ? '🚨' : '⚠️'}
+                  </button>
                 </div>
               </div>
             ))}
           </div>
-        </div>
-      </section>
 
-      {/* Science-Backed Section */}
-      <section className="px-6 py-24 bg-gradient-to-b from-gray-950 via-gray-900 to-gray-950">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            <div className="space-y-6">
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-cyan-500/10 border border-cyan-500/30 rounded-full text-sm">
-                <span className="text-cyan-400">⚕️</span>
-                <span className="text-gray-300">Science-Backed Approach</span>
-              </div>
-              <h2 className="text-4xl md:text-5xl font-bold">
-                More Than Just an <span className="text-cyan-400">AI Chatbot</span>
-              </h2>
-              <div className="space-y-4 text-gray-300">
-                <p className="text-lg">
-                  Built on research in productivity psychology, flow state optimization, and sustainable performance.
-                </p>
-                <p>
-                  We're partnering with <span className="text-white font-semibold">certified mental health professionals</span> and <span className="text-white font-semibold">organizational psychologists</span> to ensure the platform isn't just tracking — it's actually helping you build better.
-                </p>
-              </div>
-              <div className="space-y-3 pt-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 bg-cyan-500/20 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <span className="text-cyan-400 text-sm">✓</span>
-                  </div>
-                  <div>
-                    <div className="font-semibold">Evidence-Based Interventions</div>
-                    <div className="text-sm text-gray-400">AI suggestions based on behavioral research</div>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 bg-cyan-500/20 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <span className="text-cyan-400 text-sm">✓</span>
-                  </div>
-                  <div>
-                    <div className="font-semibold">Professional Partnerships</div>
-                    <div className="text-sm text-gray-400">Collaborating with mental health experts (coming soon)</div>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 bg-cyan-500/20 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <span className="text-cyan-400 text-sm">✓</span>
-                  </div>
-                  <div>
-                    <div className="font-semibold">Privacy-First Design</div>
-                    <div className="text-sm text-gray-400">Your data stays yours, encrypted on decentralized storage</div>
-                  </div>
-                </div>
+          {/* Stats */}
+          <div className="mt-6 pt-5 border-t border-gray-700/50 grid grid-cols-3 gap-4">
+            <div className="text-center p-3 bg-black/40 rounded-xl">
+              <div className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Tasks</div>
+              <div className="text-xl font-black bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
+                {tasks.filter(t => t.completed).length}/{tasks.length}
               </div>
             </div>
-            <div className="relative">
-              <div className="p-8 bg-gradient-to-br from-gray-900 to-gray-800 border border-cyan-500/20 rounded-2xl">
-                <h3 className="text-xl font-bold mb-6">What We Measure</h3>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-lg">
-                    <span className="text-gray-300">Tasks Completed</span>
-                    <span className="text-cyan-400 font-bold">85%</span>
-                  </div>
-                  <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-lg">
-                    <span className="text-gray-300">Blocker Resolution Time</span>
-                    <span className="text-orange-400 font-bold">1.2 hrs</span>
-                  </div>
-                  <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-lg">
-                    <span className="text-gray-300">Focus Session Length</span>
-                    <span className="text-cyan-400 font-bold">2.5 hrs</span>
-                  </div>
-                  <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-lg">
-                    <span className="text-gray-300">Sustainable Pace Score</span>
-                    <span className="text-green-400 font-bold">Good</span>
-                  </div>
-                </div>
-                <div className="mt-6 p-4 bg-cyan-950/30 border border-cyan-500/30 rounded-lg">
-                  <div className="text-sm text-cyan-400 font-semibold mb-1">AI Insight</div>
-                  <div className="text-sm text-gray-300">
-                    You're completing tasks but resolution time is up 40%. Consider pair programming for blockers.
-                  </div>
-                </div>
+            <div className="text-center p-3 bg-black/40 rounded-xl">
+              <div className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Blockers</div>
+              <div className="text-xl font-black text-red-400">
+                {tasks.filter(t => t.hasBlocker).length}
+              </div>
+            </div>
+            <div className="text-center p-3 bg-black/40 rounded-xl">
+              <div className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Uptime</div>
+              <div className={`text-xl font-black ${uptime >= 80 ? 'text-cyan-400' : 'text-orange-400'}`}>
+                {uptime}%
               </div>
             </div>
           </div>
         </div>
+
+        {/* Factor Breakdown */}
+        <div className="bg-gradient-to-br from-gray-900/60 to-gray-800/60 border border-gray-700/30 rounded-2xl p-5 backdrop-blur-sm">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-sm font-bold text-gray-400 uppercase tracking-wide">Uptime Factors</span>
+            <div className="flex-1 h-px bg-gradient-to-r from-gray-700 to-transparent"></div>
+          </div>
+          <div className="space-y-2.5 text-sm">
+            <div className="flex justify-between items-center p-2 rounded-lg bg-black/30">
+              <span className="text-gray-400 font-medium">Task Completion</span>
+              <span className="text-cyan-400 font-bold font-mono">{Math.round((tasks.filter(t => t.completed).length / Math.max(tasks.length, 1)) * 50)}%</span>
+            </div>
+            <div className="flex justify-between items-center p-2 rounded-lg bg-black/30">
+              <span className="text-gray-400 font-medium">Energy Level</span>
+              <span className="text-cyan-400 font-bold font-mono">{Math.round((energy / 5) * 25)}%</span>
+            </div>
+            {tasks.filter(t => t.hasBlocker && !t.completed).length > 0 && (
+              <div className="flex justify-between items-center p-2 rounded-lg bg-black/30">
+                <span className="text-gray-400 font-medium">Blocker Penalty</span>
+                <span className="text-red-400 font-bold font-mono">-{tasks.filter(t => t.hasBlocker && !t.completed).length * 10}%</span>
+              </div>
+            )}
+            {lastBreak && (
+              <div className="flex justify-between items-center p-2 rounded-lg bg-black/30">
+                <span className="text-gray-400 font-medium">Break Bonus</span>
+                <span className="text-green-400 font-bold font-mono">+15%</span>
+              </div>
+            )}
+          </div>
+        </div>
       </section>
 
-      {/* Waitlist CTA */}
-      <section id="waitlist" className="px-6 py-32 bg-gradient-to-b from-gray-900 to-gray-950">
-        <div className="max-w-4xl mx-auto text-center space-y-8">
-          <div className="space-y-4">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500/10 border border-orange-500/30 rounded-full text-sm mb-4">
-              <span className="text-orange-400">🔥</span>
-              <span className="text-gray-300">99.99% uptime or we're not doing it right</span>
-            </div>
-            <h2 className="text-4xl md:text-6xl font-bold">
-              Ready to Track <span className="text-cyan-400">Real Productivity</span>?
-            </h2>
-            <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-              Join 50+ builders already testing the beta. First 100 get lifetime free access + exclusive features.
-            </p>
-          </div>
-
-          {!submitted ? (
-            <div className="max-w-md mx-auto space-y-4">
-              <div className="flex flex-col sm:flex-row gap-3">
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-                  placeholder="your@email.com"
-                  className="flex-1 px-6 py-4 bg-gray-900 border border-gray-700 rounded-xl focus:outline-none focus:border-cyan-500 focus:shadow-lg focus:shadow-cyan-500/20 transition-all text-lg"
-                />
-                <button
-                  onClick={handleSubmit}
-                  className="px-8 py-4 bg-gradient-to-r from-cyan-500 to-orange-500 text-white rounded-xl font-bold text-lg hover:shadow-2xl hover:shadow-cyan-500/30 transform hover:scale-105 transition-all whitespace-nowrap"
-                >
-                  Get Beta Access
-                </button>
-              </div>
-              <p className="text-sm text-gray-500">
-                🔐 Zero spam. Unsubscribe anytime. Your data = your property.
+      {/* Uptime Timeline Review */}
+      <section className="relative px-4 pb-12 max-w-4xl mx-auto">
+        <div className="bg-gradient-to-br from-gray-900/80 to-gray-800/80 border border-gray-700/50 rounded-2xl p-6 backdrop-blur-sm shadow-2xl">
+          
+          {/* Header with Timeline Toggle */}
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-xl font-bold mb-1">Uptime Overview</h3>
+              <p className="text-sm text-gray-400">
+                Average: <span className={`font-bold ${averageUptime >= 80 ? 'text-cyan-400' : 'text-orange-400'}`}>{averageUptime}%</span>
               </p>
             </div>
-          ) : (
-            <div className="max-w-md mx-auto py-6 px-8 bg-gradient-to-r from-cyan-500/10 to-orange-500/10 border border-cyan-500/30 rounded-2xl">
-              <div className="text-2xl mb-2">✓</div>
-              <div className="text-xl font-bold text-cyan-400 mb-1">You're in!</div>
-              <div className="text-gray-400">Check your email for beta access instructions.</div>
+            <div className="flex gap-1 bg-black/50 p-1 rounded-xl">
+              {['day', 'week', 'month', 'year'].map((view) => (
+                <button
+                  key={view}
+                  onClick={() => setTimelineView(view)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-300 ${
+                    timelineView === view
+                      ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg shadow-cyan-500/30'
+                      : 'text-gray-400 hover:text-gray-300'
+                  }`}
+                >
+                  {view.charAt(0).toUpperCase() + view.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Chart */}
+          <div className="mb-6">
+            <div className="flex items-end justify-between gap-2 h-48">
+              {currentData.map((data, idx) => (
+                <div key={idx} className="group flex-1 flex flex-col items-center justify-end gap-2">
+                  <div className="relative w-full">
+                    <div className="w-full bg-gray-800 rounded-t-lg overflow-hidden" style={{ height: '12rem' }}>
+                      <div
+                        className={`w-full rounded-t-lg transition-all duration-700 group-hover:opacity-80 ${
+                          data.uptime >= 80
+                            ? 'bg-gradient-to-t from-cyan-500 to-blue-500'
+                            : data.uptime >= 60
+                            ? 'bg-gradient-to-t from-orange-500 to-yellow-500'
+                            : 'bg-gradient-to-t from-red-500 to-orange-500'
+                        }`}
+                        style={{
+                          height: `${data.uptime}%`,
+                          marginTop: 'auto',
+                          position: 'absolute',
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                        }}
+                      />
+                    </div>
+                    {/* Value on hover */}
+                    <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/90 px-2 py-1 rounded text-xs font-bold whitespace-nowrap">
+                      {data.uptime}%
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-500 font-medium">{data.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Stats Grid */}
+          {timelineView === 'week' && (
+            <div className="grid grid-cols-3 gap-3 pt-4 border-t border-gray-700/50">
+              <div className="text-center p-3 bg-black/40 rounded-xl">
+                <div className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Best Day</div>
+                <div className="text-lg font-black text-cyan-400">
+                  {currentData.reduce((max, d) => d.uptime > max.uptime ? d : max).label}
+                </div>
+                <div className="text-xs text-gray-600">
+                  {Math.max(...currentData.map(d => d.uptime))}% uptime
+                </div>
+              </div>
+              <div className="text-center p-3 bg-black/40 rounded-xl">
+                <div className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Total Tasks</div>
+                <div className="text-lg font-black text-orange-400">
+                  {currentData.reduce((sum, d) => sum + (d.tasks || 0), 0)}
+                </div>
+                <div className="text-xs text-gray-600">completed</div>
+              </div>
+              <div className="text-center p-3 bg-black/40 rounded-xl">
+                <div className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Avg Energy</div>
+                <div className="text-lg font-black text-green-400">
+                  {energyEmojis[Math.round(currentData.reduce((sum, d) => sum + (d.energy || 3), 0) / currentData.length) - 1]}
+                </div>
+                <div className="text-xs text-gray-600">
+                  {energyLabels[Math.round(currentData.reduce((sum, d) => sum + (d.energy || 3), 0) / currentData.length) - 1]}
+                </div>
+              </div>
             </div>
           )}
-
-          <div className="pt-12 grid grid-cols-2 md:grid-cols-4 gap-6 text-sm">
-            <div className="text-center space-y-2">
-              <div className="text-cyan-400 text-2xl">⚡</div>
-              <div className="text-gray-400">Built on Monad</div>
-            </div>
-            <div className="text-center space-y-2">
-              <div className="text-cyan-400 text-2xl">🦊</div>
-              <div className="text-gray-400">MetaMask Smart Accounts</div>
-            </div>
-            <div className="text-center space-y-2">
-              <div className="text-cyan-400 text-2xl">🤖</div>
-              <div className="text-gray-400">AI-Powered Insights</div>
-            </div>
-            <div className="text-center space-y-2">
-              <div className="text-cyan-400 text-2xl">🔗</div>
-              <div className="text-gray-400">Farcaster Native</div>
-            </div>
-          </div>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="border-t border-gray-800 bg-gray-950 py-8">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-500">
-            <div className="flex items-center gap-2">
-              <img 
-                src="./logo.png" 
-                alt="Builder Uptime Logo" 
-                className="w-6 h-6 rounded-lg"
-              />
-              <span>© 2025 Builder Uptime</span>
-            </div>
-            <div className="flex gap-6">
-              <button className="hover:text-cyan-400 transition-colors">Twitter</button>
-              <button className="hover:text-cyan-400 transition-colors">Farcaster</button>
-              <button className="hover:text-cyan-400 transition-colors">GitHub</button>
-              <button className="hover:text-cyan-400 transition-colors">Docs</button>
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
