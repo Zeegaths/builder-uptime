@@ -71,7 +71,7 @@ export default function BuilderUptimeLanding() {
   };
 
   const toggleTask = (id) => {
-    setDemoTasks(demoTasks.map(task =>
+    setDemoTasks(demoTasks.map(task => 
       task.id === id ? { ...task, completed: !task.completed } : task
     ));
   };
@@ -85,55 +85,13 @@ export default function BuilderUptimeLanding() {
     return Math.max(0, Math.round(base - penalty));
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (email && email.includes('@')) {
       setSubmitted(true);
-
-      try {
-        // Send email via API
-        const mailResponse = await fetch("/api/mail", {
-          cache: "no-store",
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            firstname: email.split('@')[0], // Extract name from email or ask for name
-            email: email
-          }),
-        });
-
-        if (!mailResponse.ok) {
-          throw new Error('Failed to send email');
-        }
-
-        // Optionally save to Notion/database
-        const notionResponse = await fetch("/api/notion", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name: email.split('@')[0],
-            email: email
-          }),
-        });
-
-        if (!notionResponse.ok) {
-          console.error('Failed to save to database');
-        }
-
-        // Success - keep the submitted state
-        setTimeout(() => {
-          setEmail('');
-        }, 3000);
-
-      } catch (error) {
-        console.error('Error:', error);
+      setTimeout(() => {
         setSubmitted(false);
-        // Show error message to user
-        alert('Failed to submit. Please try again.');
-      }
+        setEmail('');
+      }, 3000);
     }
   };
 
@@ -143,9 +101,9 @@ export default function BuilderUptimeLanding() {
       <header className="border-b border-gray-800 bg-gray-950/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img
-              src="./logo.png"
-              alt="Builder Uptime Logo"
+            <img 
+              src="./logo.png" 
+              alt="Builder Uptime Logo" 
               className="w-10 h-10 rounded-xl shadow-lg shadow-cyan-500/20"
             />
             <div>
@@ -158,7 +116,7 @@ export default function BuilderUptimeLanding() {
               <span className="text-cyan-400">⚕️</span>
               <span className="text-gray-400">Backed by behavioral science</span>
             </div>
-            <button
+            <button 
               onClick={() => document.getElementById('waitlist').scrollIntoView({ behavior: 'smooth' })}
               className="px-6 py-2.5 bg-gradient-to-r from-cyan-500 to-orange-500 text-white rounded-lg font-medium hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
             >
@@ -171,7 +129,7 @@ export default function BuilderUptimeLanding() {
       {/* Hero Section */}
       <section className="relative px-6 py-24 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-cyan-500/5 via-transparent to-transparent pointer-events-none" />
-
+        
         <div className="max-w-6xl mx-auto relative">
           <div className="text-center space-y-8">
             <div className="inline-flex items-center gap-3 px-5 py-2.5 bg-gradient-to-r from-cyan-950/50 to-orange-950/50 border border-cyan-500/30 rounded-full text-sm backdrop-blur-sm">
@@ -197,7 +155,7 @@ export default function BuilderUptimeLanding() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-              <button
+              <button 
                 onClick={() => document.getElementById('demo').scrollIntoView({ behavior: 'smooth' })}
                 className="px-8 py-4 bg-gradient-to-r from-cyan-500 to-orange-500 text-white rounded-xl font-semibold text-lg hover:shadow-2xl hover:shadow-cyan-500/30 transform hover:scale-105 transition-all"
               >
@@ -276,20 +234,22 @@ export default function BuilderUptimeLanding() {
                 {demoTasks.map((task) => (
                   <div
                     key={task.id}
-                    className={`p-4 rounded-lg border-2 transition-all ${task.completed
-                        ? 'bg-cyan-500/10 border-cyan-500/30'
-                        : task.blocker
-                          ? 'bg-red-500/10 border-red-500/30'
-                          : 'bg-gray-800 border-gray-700'
-                      }`}
+                    className={`p-4 rounded-lg border-2 transition-all ${
+                      task.completed 
+                        ? 'bg-cyan-500/10 border-cyan-500/30' 
+                        : task.blocker 
+                        ? 'bg-red-500/10 border-red-500/30'
+                        : 'bg-gray-800 border-gray-700'
+                    }`}
                   >
                     <div className="flex items-start gap-3">
                       <button
                         onClick={() => toggleTask(task.id)}
-                        className={`mt-1 w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${task.completed
-                            ? 'bg-cyan-500 border-cyan-500'
+                        className={`mt-1 w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+                          task.completed 
+                            ? 'bg-cyan-500 border-cyan-500' 
                             : 'border-gray-600 hover:border-cyan-500'
-                          }`}
+                        }`}
                       >
                         {task.completed && <span className="text-white text-xs">✓</span>}
                       </button>
@@ -331,10 +291,11 @@ export default function BuilderUptimeLanding() {
                   <button
                     key={blocker.type}
                     onClick={() => setBlockerType(blocker.type)}
-                    className={`w-full p-4 rounded-lg border-2 text-left transition-all ${blockerType === blocker.type
+                    className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
+                      blockerType === blocker.type
                         ? `bg-${blocker.color}-500/20 border-${blocker.color}-500`
                         : 'bg-gray-800 border-gray-700 hover:border-gray-600'
-                      }`}
+                    }`}
                   >
                     <div className="font-medium text-sm">{blocker.label}</div>
                   </button>
@@ -416,10 +377,11 @@ export default function BuilderUptimeLanding() {
                         fill="none"
                         strokeDasharray={`${2 * Math.PI * 35}`}
                         strokeDashoffset={`${2 * Math.PI * 35 * (1 - day.uptime / 100)}`}
-                        className={`${day.uptime >= 85 ? 'text-cyan-500' :
-                            day.uptime >= 60 ? 'text-orange-500' :
-                              'text-red-500'
-                          } transition-all`}
+                        className={`${
+                          day.uptime >= 85 ? 'text-cyan-500' :
+                          day.uptime >= 60 ? 'text-orange-500' :
+                          'text-red-500'
+                        } transition-all`}
                       />
                     </svg>
                     <div className="absolute inset-0 flex items-center justify-center">
@@ -625,9 +587,9 @@ export default function BuilderUptimeLanding() {
         <div className="max-w-6xl mx-auto px-6">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-500">
             <div className="flex items-center gap-2">
-              <img
-                src="./logo.png"
-                alt="Builder Uptime Logo"
+              <img 
+                src="./logo.png" 
+                alt="Builder Uptime Logo" 
                 className="w-6 h-6 rounded-lg"
               />
               <span>© 2025 Builder Uptime</span>
