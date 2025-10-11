@@ -79,7 +79,7 @@ export default function App() {
         if (typeof window !== 'undefined') {
           const { sdk } = await import('@farcaster/miniapp-sdk');
           console.log('Calling Farcaster SDK ready...');
-          sdk.actions.ready();
+          await sdk.actions.ready();
           console.log('Farcaster SDK ready called!');
         }
       } catch (err) {
