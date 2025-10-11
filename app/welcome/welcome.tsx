@@ -1,17 +1,11 @@
 import { useState, useEffect } from 'react';
+import { usePrivy, useWallets } from '@privy-io/react-auth';
 
 export default function MinimalBuilderUptime() {
-  // Wallet connection hooks (these would come from Privy)
-  // Uncomment these when you have Privy installed:
-  // import { usePrivy, useWallets } from '@privy-io/react-auth';
-  // const { ready, authenticated, login, logout, user } = usePrivy();
-  // const { wallets } = useWallets();
-  // const userWallet = wallets[0];
-  // const walletAddress = userWallet?.address;
-  
-  // Mock wallet state for demo (remove when using real Privy)
-  const [mockWalletConnected, setMockWalletConnected] = useState(false);
-  const mockAddress = mockWalletConnected ? '0xb7C7...501d' : null;
+  const { ready, authenticated, login, logout, user } = usePrivy();
+  const { wallets } = useWallets();
+  const userWallet = wallets[0];
+  const walletAddress = userWallet?.address;
   
   const [taskInput, setTaskInput] = useState('');
   const [tasks, setTasks] = useState([
@@ -58,13 +52,13 @@ export default function MinimalBuilderUptime() {
   };
 
   const toggleTask = (id) => {
-    setTasks(tasks.map(task => 
+    setTasks(tasks.map(task =>
       task.id === id ? { ...task, completed: !task.completed } : task
     ));
   };
 
   const toggleBlocker = (id) => {
-    setTasks(tasks.map(task => 
+    setTasks(tasks.map(task =>
       task.id === id ? { ...task, hasBlocker: !task.hasBlocker } : task
     ));
   };
@@ -134,9 +128,9 @@ export default function MinimalBuilderUptime() {
       <header className="relative border-b border-gray-800/50 bg-black/40 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-3 md:px-6 lg:px-8 py-3 md:py-4 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 md:gap-3 min-w-0">
-            <img 
-              src="./logo.png" 
-              alt="Builder Uptime Logo" 
+            <img
+              src="./logo.png"
+              alt="Builder Uptime Logo"
               className="w-8 h-8 md:w-10 md:h-10 rounded-xl shadow-lg shadow-cyan-500/30 flex-shrink-0"
             />
             <div className="min-w-0">
@@ -144,19 +138,18 @@ export default function MinimalBuilderUptime() {
               <div className="text-xs text-gray-500 hidden md:block">Real Productivity Tracking</div>
             </div>
           </div>
-          <button 
-            onClick={() => setMockWalletConnected(!mockWalletConnected)}
+          <button
+            onClick={authenticated ? logout : login}
+            disabled={!ready}
             className="px-3 md:px-5 py-1.5 md:py-2 bg-gradient-to-r from-cyan-500/20 to-orange-500/20 border border-cyan-500/50 rounded-lg md:rounded-xl text-xs md:text-sm font-medium text-cyan-400 hover:from-cyan-500/30 hover:to-orange-500/30 hover:shadow-lg hover:shadow-cyan-500/20 transition-all duration-300 whitespace-nowrap"
           >
-            {mockWalletConnected ? (
+            {!ready ? 'Loading...' : authenticated && walletAddress ? (
               <span className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 bg-green-400 rounded-full"></span>
-                <span className="hidden md:inline">{mockAddress}</span>
+                <span className="hidden md:inline">{walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}</span>
                 <span className="md:hidden">Connected</span>
               </span>
-            ) : (
-              'Connect'
-            )}
+            ) : 'Connect Wallet'}
           </button>
         </div>
       </header>
