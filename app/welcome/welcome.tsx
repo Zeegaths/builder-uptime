@@ -1,25 +1,34 @@
 import { useState, useEffect } from 'react';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
+import { useBuilderAgent } from '~/hooks/useBuilderAgent';
 
 export default function MinimalBuilderUptime() {
   const { ready, authenticated, login, logout, user } = usePrivy();
   const { wallets } = useWallets();
   const userWallet = wallets[0];
   const walletAddress = userWallet?.address;
-  
+
+  const { analysis, isAnalyzing, analyzeUptime } = useBuilderAgent();
+  const [showAIInsight, setShowAIInsight] = useState(false);
+
+  // ✅ CLEANED: Empty initial state
   const [taskInput, setTaskInput] = useState('');
-  const [tasks, setTasks] = useState([
-    { id: 1, text: 'Fix auth bug', completed: true, hasBlocker: false },
-    { id: 2, text: 'Deploy contract', completed: true, hasBlocker: false },
-    { id: 3, text: 'Implement frames', completed: false, hasBlocker: true },
-  ]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [energy, setEnergy] = useState(4);
   const [focusSeconds, setFocusSeconds] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
-  const [lastBreak, setLastBreak] = useState(null);
+  const [lastBreak, setLastBreak] = useState<number | null>(null);
   const [showBreakReminder, setShowBreakReminder] = useState(false);
-  const [timelineView, setTimelineView] = useState('week');
+  const [timelineView, setTimelineView] = useState<'week' | 'month'>('week');
 
+  interface Task {
+    id: number;
+    text: string;
+    completed: boolean;
+    hasBlocker: boolean;
+  }
+
+  // Timer effect...
   useEffect(() => {
     let interval;
     if (isTimerRunning) {
@@ -39,6 +48,31 @@ export default function MinimalBuilderUptime() {
     return () => clearInterval(interval);
   }, [isTimerRunning]);
 
+  // ✅ FIXED: Removed tasks.length > 0 check
+  useEffect(() => {
+    if (authenticated) {
+      const timer = setTimeout(() => {
+        analyzeUptime({
+          tasks,
+          energy,
+          focusMinutes: Math.floor(focusSeconds / 60),
+          uptime: calculateUptime(),
+          lastBreak,
+        });
+      }, 2000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [tasks, energy, focusSeconds, authenticated]);
+
+  useEffect(() => {
+    if (analysis) {
+      setShowAIInsight(true);
+      setTimeout(() => setShowAIInsight(false), 30000);
+    }
+  }, [analysis]);
+
+  // Your functions...
   const handleAddTask = () => {
     if (taskInput.trim()) {
       setTasks([...tasks, {
@@ -115,6 +149,7 @@ export default function MinimalBuilderUptime() {
   const currentData = timelineData[timelineView];
   const averageUptime = Math.round(currentData.reduce((sum, d) => sum + d.uptime, 0) / currentData.length);
 
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black text-white">
       {/* Ambient background effects */}
@@ -154,6 +189,38 @@ export default function MinimalBuilderUptime() {
         </div>
       </header>
 
+      {showAIInsight && analysis && (
+        <div className="max-w-7xl mx-auto px-4 pt-4">
+          <div className="bg-cyan-500/10 border-2 border-cyan-500/50 rounded-2xl p-5 backdrop-blur-xl">
+            <button
+              onClick={() => setShowAIInsight(false)}
+              className="float-right text-gray-400 hover:text-white"
+            >
+              ✕
+            </button>
+            <div className="flex items-start gap-4">
+              <div className="text-4xl">🤖</div>
+              <div className="flex-1">
+                <div className="text-sm font-semibold text-cyan-400 mb-1">
+                  AI Suggestion
+                </div>
+                <p className="text-white mb-2">{analysis.suggestion}</p>
+                <p className="text-xs text-gray-400">{analysis.reasoning}</p>
+
+                {analysis.needsBreak && (
+                  <button
+                    onClick={takeBreak}
+                    className="mt-3 px-4 py-2 bg-green-500/20 border border-green-500/50 rounded-xl text-sm font-bold text-green-400"
+                  >
+                    🌱 Take Break Now
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Break Reminder */}
       {showBreakReminder && (
         <div className="fixed top-16 md:top-20 left-1/2 transform -translate-x-1/2 z-50 animate-bounce px-4 w-full max-w-md">
@@ -188,7 +255,7 @@ export default function MinimalBuilderUptime() {
       {/* Desktop: Two Column Layout, Mobile: Single Column */}
       <div className="max-w-7xl mx-auto px-3 md:px-6 lg:px-8 py-6 md:py-8 lg:py-12">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
-          
+
           {/* Left Column - Hero + Stats */}
           <div className="lg:col-span-5 space-y-6">
             {/* Hero Section */}
@@ -196,10 +263,9 @@ export default function MinimalBuilderUptime() {
               <div className="text-center space-y-6 md:space-y-8">
                 {/* Live Uptime Display */}
                 <div className="relative inline-block">
-                  <div className={`absolute inset-0 blur-2xl opacity-30 ${
-                    uptime >= 80 ? 'bg-cyan-500' : uptime >= 50 ? 'bg-orange-500' : 'bg-red-500'
-                  }`}></div>
-                  
+                  <div className={`absolute inset-0 blur-2xl opacity-30 ${uptime >= 80 ? 'bg-cyan-500' : uptime >= 50 ? 'bg-orange-500' : 'bg-red-500'
+                    }`}></div>
+
                   <svg className="relative w-40 h-40 md:w-48 md:h-48 lg:w-56 lg:h-56 mx-auto transform -rotate-90">
                     <defs>
                       <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -354,11 +420,10 @@ export default function MinimalBuilderUptime() {
                     </div>
                     <button
                       onClick={() => setIsTimerRunning(!isTimerRunning)}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 whitespace-nowrap ${
-                        isTimerRunning 
-                          ? 'bg-gradient-to-r from-orange-500/20 to-red-500/20 text-orange-400 border border-orange-500/50 shadow-lg shadow-orange-500/20' 
-                          : 'bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-400 border border-cyan-500/50 hover:shadow-lg hover:shadow-cyan-500/20'
-                      }`}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 whitespace-nowrap ${isTimerRunning
+                        ? 'bg-gradient-to-r from-orange-500/20 to-red-500/20 text-orange-400 border border-orange-500/50 shadow-lg shadow-orange-500/20'
+                        : 'bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-400 border border-cyan-500/50 hover:shadow-lg hover:shadow-cyan-500/20'
+                        }`}
                     >
                       {isTimerRunning ? '⏸ Pause' : '▶ Start'}
                     </button>
@@ -381,7 +446,7 @@ export default function MinimalBuilderUptime() {
             {/* Task Tracker */}
             <section className="relative">
               <div className="bg-gradient-to-br from-gray-900/80 to-gray-800/80 border border-gray-700/50 rounded-2xl p-4 md:p-6 backdrop-blur-sm shadow-2xl">
-                
+
                 {/* Add Task */}
                 <div className="flex gap-2 mb-4 md:mb-6">
                   <input
@@ -402,46 +467,84 @@ export default function MinimalBuilderUptime() {
 
                 {/* Task List */}
                 <div className="space-y-2.5 mb-4 md:mb-6">
-                  {tasks.map((task) => (
-                    <div
-                      key={task.id}
-                      className={`group p-3 md:p-4 rounded-xl border-2 transition-all duration-300 ${
-                        task.completed 
-                          ? 'bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border-cyan-500/40 shadow-lg shadow-cyan-500/10' 
-                          : task.hasBlocker
-                          ? 'bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/40 shadow-lg shadow-red-500/10'
-                          : 'bg-black/40 border-gray-700 hover:border-gray-600 hover:bg-black/60'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => toggleTask(task.id)}
-                          className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all duration-300 flex-shrink-0 ${
-                            task.completed 
-                              ? 'bg-gradient-to-br from-cyan-500 to-blue-500 border-cyan-500 shadow-lg shadow-cyan-500/50' 
-                              : 'border-gray-600 hover:border-cyan-500 hover:scale-110'
-                          }`}
-                        >
-                          {task.completed && <span className="text-white text-xs font-bold">✓</span>}
-                        </button>
-                        <span className={`flex-1 text-sm font-medium transition-all duration-300 ${
-                          task.completed ? 'line-through text-gray-500' : 'text-gray-200'
-                        }`}>
-                          {task.text}
-                        </span>
-                        <button
-                          onClick={() => toggleBlocker(task.id)}
-                          className={`text-lg px-2.5 py-1 rounded-lg transition-all duration-300 flex-shrink-0 ${
-                            task.hasBlocker
-                              ? 'bg-gradient-to-r from-red-500/20 to-orange-500/20 border border-red-500/50 shadow-lg shadow-red-500/20 scale-110'
-                              : 'text-gray-600 hover:text-gray-400 hover:scale-110'
-                          }`}
-                        >
-                          {task.hasBlocker ? '🚨' : '⚠️'}
-                        </button>
+                  {tasks.length === 0 ? (
+                    // ✅ WELCOME / EMPTY STATE
+                    <div className="text-center py-12 px-4">
+                      <div className="relative inline-block mb-6">
+                        {/* Animated circle */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 to-orange-500/20 blur-2xl animate-pulse"></div>
+                        <div className="relative text-6xl md:text-7xl">📋</div>
+                      </div>
+
+                      <h3 className="text-xl md:text-2xl font-bold mb-3 bg-gradient-to-r from-cyan-400 to-orange-400 bg-clip-text text-transparent">
+                        Ready to track your uptime?
+                      </h3>
+
+                      <p className="text-gray-400 mb-6 max-w-md mx-auto">
+                        Add your first task to start building sustainably. We'll help you track progress and avoid burnout.
+                      </p>
+
+                      {/* Quick start tips */}
+                      <div className="flex flex-col sm:flex-row gap-3 justify-center text-sm">
+                        <div className="flex items-center gap-2 px-4 py-2 bg-gray-800/50 rounded-lg border border-gray-700">
+                          <span className="text-cyan-400">✓</span>
+                          <span className="text-gray-300">Track tasks</span>
+                        </div>
+                        <div className="flex items-center gap-2 px-4 py-2 bg-gray-800/50 rounded-lg border border-gray-700">
+                          <span className="text-orange-400">✓</span>
+                          <span className="text-gray-300">Spot blockers</span>
+                        </div>
+                        <div className="flex items-center gap-2 px-4 py-2 bg-gray-800/50 rounded-lg border border-gray-700">
+                          <span className="text-purple-400">✓</span>
+                          <span className="text-gray-300">AI insights</span>
+                        </div>
+                      </div>
+
+                      {/* Arrow pointing to input */}
+                      <div className="mt-8 text-cyan-400 animate-bounce">
+                        <span className="text-2xl">↑</span>
+                        <p className="text-xs mt-1 text-gray-500">Start by adding a task above</p>
                       </div>
                     </div>
-                  ))}
+                  ) : (
+                    // ✅ EXISTING TASK LIST
+                    tasks.map((task) => (
+                      <div
+                        key={task.id}
+                        className={`group p-3 md:p-4 rounded-xl border-2 transition-all duration-300 ${task.completed
+                            ? 'bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border-cyan-500/40 shadow-lg shadow-cyan-500/10'
+                            : task.hasBlocker
+                              ? 'bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/40 shadow-lg shadow-red-500/10'
+                              : 'bg-black/40 border-gray-700 hover:border-gray-600 hover:bg-black/60'
+                          }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => toggleTask(task.id)}
+                            className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all duration-300 flex-shrink-0 ${task.completed
+                                ? 'bg-gradient-to-br from-cyan-500 to-blue-500 border-cyan-500 shadow-lg shadow-cyan-500/50'
+                                : 'border-gray-600 hover:border-cyan-500 hover:scale-110'
+                              }`}
+                          >
+                            {task.completed && <span className="text-white text-xs font-bold">✓</span>}
+                          </button>
+                          <span className={`flex-1 text-sm font-medium transition-all duration-300 ${task.completed ? 'line-through text-gray-500' : 'text-gray-200'
+                            }`}>
+                            {task.text}
+                          </span>
+                          <button
+                            onClick={() => toggleBlocker(task.id)}
+                            className={`text-lg px-2.5 py-1 rounded-lg transition-all duration-300 flex-shrink-0 ${task.hasBlocker
+                                ? 'bg-gradient-to-r from-red-500/20 to-orange-500/20 border border-red-500/50 shadow-lg shadow-red-500/20 scale-110'
+                                : 'text-gray-600 hover:text-gray-400 hover:scale-110'
+                              }`}
+                          >
+                            {task.hasBlocker ? '🚨' : '⚠️'}
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
 
                 {/* Stats */}
@@ -471,7 +574,7 @@ export default function MinimalBuilderUptime() {
             {/* Uptime Timeline */}
             <section className="relative">
               <div className="bg-gradient-to-br from-gray-900/80 to-gray-800/80 border border-gray-700/50 rounded-2xl p-4 md:p-6 backdrop-blur-sm shadow-2xl">
-                
+
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                   <div>
@@ -483,21 +586,19 @@ export default function MinimalBuilderUptime() {
                   <div className="flex gap-1 bg-black/50 p-1 rounded-xl w-full md:w-auto">
                     <button
                       onClick={() => setTimelineView('week')}
-                      className={`flex-1 md:flex-none px-4 md:px-3 py-2 md:py-1.5 rounded-lg text-xs font-semibold transition-all duration-300 ${
-                        timelineView === 'week'
-                          ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg shadow-cyan-500/30'
-                          : 'text-gray-400 hover:text-gray-300'
-                      }`}
+                      className={`flex-1 md:flex-none px-4 md:px-3 py-2 md:py-1.5 rounded-lg text-xs font-semibold transition-all duration-300 ${timelineView === 'week'
+                        ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg shadow-cyan-500/30'
+                        : 'text-gray-400 hover:text-gray-300'
+                        }`}
                     >
                       Week
                     </button>
                     <button
                       onClick={() => setTimelineView('month')}
-                      className={`flex-1 md:flex-none px-4 md:px-3 py-2 md:py-1.5 rounded-lg text-xs font-semibold transition-all duration-300 ${
-                        timelineView === 'month'
-                          ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg shadow-cyan-500/30'
-                          : 'text-gray-400 hover:text-gray-300'
-                      }`}
+                      className={`flex-1 md:flex-none px-4 md:px-3 py-2 md:py-1.5 rounded-lg text-xs font-semibold transition-all duration-300 ${timelineView === 'month'
+                        ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg shadow-cyan-500/30'
+                        : 'text-gray-400 hover:text-gray-300'
+                        }`}
                     >
                       Month
                     </button>
@@ -512,13 +613,12 @@ export default function MinimalBuilderUptime() {
                         <div className="relative w-full">
                           <div className="w-full bg-gray-800 rounded-t-lg overflow-hidden" style={{ height: '10rem' }}>
                             <div
-                              className={`w-full rounded-t-lg transition-all duration-700 group-hover:opacity-80 ${
-                                data.uptime >= 80
-                                  ? 'bg-gradient-to-t from-cyan-500 to-blue-500'
-                                  : data.uptime >= 60
+                              className={`w-full rounded-t-lg transition-all duration-700 group-hover:opacity-80 ${data.uptime >= 80
+                                ? 'bg-gradient-to-t from-cyan-500 to-blue-500'
+                                : data.uptime >= 60
                                   ? 'bg-gradient-to-t from-orange-500 to-yellow-500'
                                   : 'bg-gradient-to-t from-red-500 to-orange-500'
-                              }`}
+                                }`}
                               style={{
                                 height: `${data.uptime}%`,
                                 marginTop: 'auto',
