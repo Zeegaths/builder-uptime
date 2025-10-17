@@ -104,7 +104,7 @@ export default function App() {
           createOnLogin: 'users-without-wallets',
         },
         // Configure supported wallets
-        loginMethods: ['email', 'wallet'],
+        loginMethods: ['email', 'wallet', 'farcaster'],
       }}
     >
       <Outlet />

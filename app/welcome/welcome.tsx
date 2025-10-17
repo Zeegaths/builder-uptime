@@ -1,6 +1,22 @@
+import { useUserOperation } from '~/hooks/useUserOperation';
 import { useState, useEffect } from 'react';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
-import { useBuilderAgent } from '~/hooks/useBuilderAgent';
+import useMetaMaskSmartAccount from '../hooks/useMetamaskSmartAccount';
+
+// Define Task interface
+interface Task {
+  id: number;
+  text: string;
+  completed: boolean;
+  hasBlocker: boolean;
+}
+
+// Define AI Analysis interface
+interface AIAnalysis {
+  suggestion: string;
+  reasoning: string;
+  needsBreak?: boolean;
+}
 
 export default function MinimalBuilderUptime() {
   const { ready, authenticated, login, logout, user } = usePrivy();
@@ -8,10 +24,27 @@ export default function MinimalBuilderUptime() {
   const userWallet = wallets[0];
   const walletAddress = userWallet?.address;
 
-  const { analysis, isAnalyzing, analyzeUptime } = useBuilderAgent();
-  const [showAIInsight, setShowAIInsight] = useState(false);
+  // Get Farcaster profile from Privy user data
+  const farcasterAccount = user?.farcaster;
+  const farcasterPfp = farcasterAccount?.pfp;
+  const farcasterUsername = farcasterAccount?.username;
+  const farcasterDisplayName = farcasterAccount?.displayName;
 
-  // ✅ CLEANED: Empty initial state
+  // MetaMask Smart Account Integration
+  const { smartAccount, isCreatingAccount, error: smartAccountError } = useMetaMaskSmartAccount();
+  const { sendUserOperation, isSending, txHash, error: txError } = useUserOperation(smartAccount);
+  
+  // TODO: Uncomment above when hooks are implemented
+  // const smartAccount = null;
+  // const isCreatingAccount = false;
+
+  // UI State
+  const [showSmartAccountInfo, setShowSmartAccountInfo] = useState(false);
+  const [showTestTransaction, setShowTestTransaction] = useState(false);
+  const [testRecipient, setTestRecipient] = useState('');
+  const [testAmount, setTestAmount] = useState('0.001');
+
+  // Task State
   const [taskInput, setTaskInput] = useState('');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [energy, setEnergy] = useState(4);
@@ -21,16 +54,13 @@ export default function MinimalBuilderUptime() {
   const [showBreakReminder, setShowBreakReminder] = useState(false);
   const [timelineView, setTimelineView] = useState<'week' | 'month'>('week');
 
-  interface Task {
-    id: number;
-    text: string;
-    completed: boolean;
-    hasBlocker: boolean;
-  }
+  // AI Analysis state (for when useBuilderAgent is implemented)
+  const [analysis, setAnalysis] = useState<AIAnalysis | null>(null);
+  const [showAIInsight, setShowAIInsight] = useState(false);
 
-  // Timer effect...
+  // Timer effect
   useEffect(() => {
-    let interval;
+    let interval: NodeJS.Timeout;
     if (isTimerRunning) {
       interval = setInterval(() => {
         setFocusSeconds(prev => {
@@ -48,69 +78,46 @@ export default function MinimalBuilderUptime() {
     return () => clearInterval(interval);
   }, [isTimerRunning]);
 
-  // ✅ FIXED: Removed tasks.length > 0 check
-  useEffect(() => {
-    if (authenticated) {
-      const timer = setTimeout(() => {
-        analyzeUptime({
-          tasks,
-          energy,
-          focusMinutes: Math.floor(focusSeconds / 60),
-          uptime: calculateUptime(),
-          lastBreak,
-        });
-      }, 2000);
-
-      return () => clearTimeout(timer);
-    }
-  }, [tasks, energy, focusSeconds, authenticated]);
-
-  useEffect(() => {
-    if (analysis) {
-      setShowAIInsight(true);
-      setTimeout(() => setShowAIInsight(false), 30000);
-    }
-  }, [analysis]);
-
-  // Your functions...
-  const handleAddTask = () => {
+  // Task functions
+  const handleAddTask = (): void => {
     if (taskInput.trim()) {
-      setTasks([...tasks, {
+      const newTask: Task = {
         id: Date.now(),
         text: taskInput,
         completed: false,
         hasBlocker: false
-      }]);
+      };
+      setTasks([...tasks, newTask]);
       setTaskInput('');
     }
   };
 
-  const toggleTask = (id) => {
+  const toggleTask = (id: number): void => {
     setTasks(tasks.map(task =>
       task.id === id ? { ...task, completed: !task.completed } : task
     ));
   };
 
-  const toggleBlocker = (id) => {
+  const toggleBlocker = (id: number): void => {
     setTasks(tasks.map(task =>
       task.id === id ? { ...task, hasBlocker: !task.hasBlocker } : task
     ));
   };
 
-  const takeBreak = () => {
+  const takeBreak = (): void => {
     setLastBreak(Date.now());
     setIsTimerRunning(false);
     setFocusSeconds(0);
     setShowBreakReminder(false);
   };
 
-  const formatTime = (seconds) => {
+  const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const calculateUptime = () => {
+  const calculateUptime = (): number => {
     if (tasks.length === 0) return 0;
     const completed = tasks.filter(t => t.completed).length;
     const taskScore = (completed / tasks.length) * 50;
@@ -124,31 +131,54 @@ export default function MinimalBuilderUptime() {
     return Math.max(0, Math.min(100, Math.round(total)));
   };
 
+  // Test smart account transaction
+  const handleTestTransaction = async () => {
+    if (!smartAccount) {
+      alert('Smart account not initialized. Please connect your wallet first.');
+      return;
+    }
+
+    if (!testRecipient || !testAmount) {
+      alert('Please enter recipient and amount');
+      return;
+    }
+    
+    try {
+      // TODO: Uncomment when hooks are ready
+      // await sendUserOperation(testRecipient, testAmount);
+      alert('Smart account hooks not yet connected. Please implement useMetaMaskSmartAccount and useUserOperation hooks.');
+      setShowTestTransaction(false);
+    } catch (err) {
+      alert('Error: ' + (err as Error).message);
+    }
+  };
+
   const uptime = calculateUptime();
   const energyEmojis = ['😫', '😔', '😐', '😊', '🚀'];
   const energyLabels = ['Exhausted', 'Low', 'Okay', 'Good', 'Peak'];
 
+  // Timeline data - only showing current uptime
+  // TODO: Implement persistent storage to track historical data
   const timelineData = {
     week: [
-      { label: 'Mon', uptime: 75 },
-      { label: 'Tue', uptime: 85 },
-      { label: 'Wed', uptime: 68 },
-      { label: 'Thu', uptime: 92 },
-      { label: 'Fri', uptime: 78 },
-      { label: 'Sat', uptime: 65 },
+      { label: 'Mon', uptime: 0 },
+      { label: 'Tue', uptime: 0 },
+      { label: 'Wed', uptime: 0 },
+      { label: 'Thu', uptime: 0 },
+      { label: 'Fri', uptime: 0 },
+      { label: 'Sat', uptime: 0 },
       { label: 'Today', uptime: uptime },
     ],
     month: [
-      { label: 'W1', uptime: 78 },
-      { label: 'W2', uptime: 85 },
-      { label: 'W3', uptime: 72 },
-      { label: 'W4', uptime: 88 },
+      { label: 'W1', uptime: 0 },
+      { label: 'W2', uptime: 0 },
+      { label: 'W3', uptime: 0 },
+      { label: 'W4', uptime: 0 },
     ],
   };
 
   const currentData = timelineData[timelineView];
-  const averageUptime = Math.round(currentData.reduce((sum, d) => sum + d.uptime, 0) / currentData.length);
-
+  const averageUptime = uptime; // Only current session data available
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black text-white">
@@ -173,22 +203,62 @@ export default function MinimalBuilderUptime() {
               <div className="text-xs text-gray-500 hidden md:block">Real Productivity Tracking</div>
             </div>
           </div>
-          <button
-            onClick={authenticated ? logout : login}
-            disabled={!ready}
-            className="px-3 md:px-5 py-1.5 md:py-2 bg-gradient-to-r from-cyan-500/20 to-orange-500/20 border border-cyan-500/50 rounded-lg md:rounded-xl text-xs md:text-sm font-medium text-cyan-400 hover:from-cyan-500/30 hover:to-orange-500/30 hover:shadow-lg hover:shadow-cyan-500/20 transition-all duration-300 whitespace-nowrap"
-          >
-            {!ready ? 'Loading...' : authenticated && walletAddress ? (
-              <span className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 bg-green-400 rounded-full"></span>
-                <span className="hidden md:inline">{walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}</span>
-                <span className="md:hidden">Connected</span>
-              </span>
-            ) : 'Connect Wallet'}
-          </button>
+          
+          <div className="flex items-center gap-2">
+            {/* Smart Account Badge */}
+            {authenticated && smartAccount && (
+              <button
+                onClick={() => setShowSmartAccountInfo(!showSmartAccountInfo)}
+                className="px-3 md:px-4 py-1.5 md:py-2 bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-500/50 rounded-lg md:rounded-xl text-xs md:text-sm font-medium text-purple-400 hover:from-purple-500/30 hover:to-pink-500/30 transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/20"
+              >
+                🔐 Smart Account
+              </button>
+            )}
+
+            {/* Creating Account Status */}
+            {authenticated && isCreatingAccount && (
+              <div className="px-3 md:px-4 py-1.5 md:py-2 bg-yellow-500/20 border border-yellow-500/50 rounded-lg md:rounded-xl text-xs md:text-sm text-yellow-400">
+                🔄 Creating Smart Account...
+              </div>
+            )}
+            
+            {/* Privy Connect Button with Farcaster Profile */}
+            <button
+              onClick={authenticated ? logout : login}
+              disabled={!ready}
+              className="px-3 md:px-5 py-1.5 md:py-2 bg-gradient-to-r from-cyan-500/20 to-orange-500/20 border border-cyan-500/50 rounded-lg md:rounded-xl text-xs md:text-sm font-medium text-cyan-400 hover:from-cyan-500/30 hover:to-orange-500/30 hover:shadow-lg hover:shadow-cyan-500/20 transition-all duration-300 whitespace-nowrap"
+            >
+              {!ready ? 'Loading...' : authenticated ? (
+                <span className="flex items-center gap-2">
+                  {farcasterPfp ? (
+                    <>
+                      <img 
+                        src={farcasterPfp} 
+                        alt={farcasterUsername || 'Profile'} 
+                        className="w-5 h-5 md:w-6 md:h-6 rounded-full border-2 border-cyan-400"
+                      />
+                      <span className="hidden md:inline">
+                        {farcasterDisplayName || farcasterUsername || 'Connected'}
+                      </span>
+                      <span className="md:hidden">Connected</span>
+                    </>
+                  ) : walletAddress ? (
+                    <>
+                      <span className="w-1.5 h-1.5 bg-green-400 rounded-full"></span>
+                      <span className="hidden md:inline">{walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}</span>
+                      <span className="md:hidden">Connected</span>
+                    </>
+                  ) : (
+                    'Connected'
+                  )}
+                </span>
+              ) : 'Connect Wallet'}
+            </button>
+          </div>
         </div>
       </header>
 
+      {/* AI Insight Panel */}
       {showAIInsight && analysis && (
         <div className="max-w-7xl mx-auto px-4 pt-4">
           <div className="bg-cyan-500/10 border-2 border-cyan-500/50 rounded-2xl p-5 backdrop-blur-xl">
@@ -215,6 +285,81 @@ export default function MinimalBuilderUptime() {
                     🌱 Take Break Now
                   </button>
                 )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Smart Account Info Panel */}
+      {showSmartAccountInfo && smartAccount && (
+        <div className="max-w-7xl mx-auto px-4 pt-4">
+          <div className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-2 border-purple-500/50 rounded-2xl p-6 backdrop-blur-xl">
+            <button
+              onClick={() => setShowSmartAccountInfo(false)}
+              className="float-right text-gray-400 hover:text-white text-xl"
+            >
+              ✕
+            </button>
+            <div className="flex items-start gap-4">
+              <div className="text-5xl">🔐</div>
+              <div className="flex-1 space-y-4">
+                <div>
+                  <div className="text-xl font-semibold text-purple-400 mb-2">
+                    MetaMask Smart Account Active
+                  </div>
+                  <p className="text-sm text-gray-400">
+                    Your account is powered by ERC-4337 Account Abstraction
+                  </p>
+                </div>
+                
+                <div className="grid gap-3">
+                  <div>
+                    <div className="text-xs text-gray-500 font-semibold uppercase mb-1">
+                      EOA Address (Privy Wallet)
+                    </div>
+                    <div className="font-mono text-sm bg-black/40 px-3 py-2 rounded-lg border border-gray-700">
+                      {smartAccount.eoaAddress}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <div className="text-xs text-gray-500 font-semibold uppercase mb-1">
+                      Smart Account Address
+                    </div>
+                    <div className="font-mono text-sm bg-black/40 px-3 py-2 rounded-lg border border-gray-700">
+                      {smartAccount.smartAccountAddress}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setShowTestTransaction(true)}
+                    className="px-4 py-2 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border border-cyan-500/50 rounded-xl text-sm font-semibold text-cyan-400 hover:from-cyan-500/30 hover:to-blue-500/30 transition-all"
+                  >
+                    🚀 Test Transaction
+                  </button>
+                  
+                  <a
+                    href={`https://sepolia.etherscan.io/address/${smartAccount.smartAccountAddress}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-xl text-sm font-medium text-gray-300 hover:bg-gray-700 transition-all"
+                  >
+                    🔍 View on Explorer
+                  </a>
+                </div>
+
+                <div className="bg-purple-500/5 border border-purple-500/20 rounded-lg p-4 text-sm text-gray-300">
+                  <div className="font-semibold text-purple-400 mb-2">✨ Smart Account Features:</div>
+                  <ul className="space-y-1 text-xs">
+                    <li>• Gasless transactions with paymasters</li>
+                    <li>• Batch multiple operations in one transaction</li>
+                    <li>• Delegate permissions to other accounts</li>
+                    <li>• Social recovery and multi-sig support</li>
+                  </ul>
+                </div>
               </div>
             </div>
           </div>
@@ -252,7 +397,66 @@ export default function MinimalBuilderUptime() {
         </div>
       )}
 
-      {/* Desktop: Two Column Layout, Mobile: Single Column */}
+      {/* Test Transaction Modal */}
+      {showTestTransaction && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gradient-to-br from-gray-900 to-gray-800 border-2 border-cyan-500/50 rounded-2xl p-6 max-w-md w-full">
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h3 className="text-xl font-bold text-cyan-400">Test Transaction</h3>
+                <p className="text-sm text-gray-400">Send a test user operation</p>
+              </div>
+              <button
+                onClick={() => setShowTestTransaction(false)}
+                className="text-gray-400 hover:text-white text-xl"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm text-gray-400 mb-2 block">Recipient Address</label>
+                <input
+                  type="text"
+                  value={testRecipient}
+                  onChange={(e) => setTestRecipient(e.target.value)}
+                  placeholder="0x..."
+                  className="w-full px-4 py-3 bg-black/50 border border-gray-700 rounded-xl focus:outline-none focus:border-cyan-500 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm text-gray-400 mb-2 block">Amount (ETH)</label>
+                <input
+                  type="text"
+                  value={testAmount}
+                  onChange={(e) => setTestAmount(e.target.value)}
+                  placeholder="0.001"
+                  className="w-full px-4 py-3 bg-black/50 border border-gray-700 rounded-xl focus:outline-none focus:border-cyan-500 text-sm"
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={handleTestTransaction}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl font-bold hover:from-cyan-400 hover:to-blue-400 transition-all shadow-lg hover:shadow-cyan-500/50"
+                >
+                  Send
+                </button>
+                <button
+                  onClick={() => setShowTestTransaction(false)}
+                  className="px-6 py-3 bg-gray-700 text-gray-300 rounded-xl font-medium hover:bg-gray-600 transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Content */}
       <div className="max-w-7xl mx-auto px-3 md:px-6 lg:px-8 py-6 md:py-8 lg:py-12">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
 
@@ -468,7 +672,7 @@ export default function MinimalBuilderUptime() {
                 {/* Task List */}
                 <div className="space-y-2.5 mb-4 md:mb-6">
                   {tasks.length === 0 ? (
-                    // ✅ WELCOME / EMPTY STATE
+                    // WELCOME / EMPTY STATE
                     <div className="text-center py-12 px-4">
                       <div className="relative inline-block mb-6">
                         {/* Animated circle */}
@@ -507,7 +711,7 @@ export default function MinimalBuilderUptime() {
                       </div>
                     </div>
                   ) : (
-                    // ✅ EXISTING TASK LIST
+                    // EXISTING TASK LIST
                     tasks.map((task) => (
                       <div
                         key={task.id}
@@ -580,7 +784,8 @@ export default function MinimalBuilderUptime() {
                   <div>
                     <h3 className="text-lg md:text-xl font-bold mb-1">Uptime Overview</h3>
                     <p className="text-sm text-gray-400">
-                      Average: <span className={`font-bold ${averageUptime >= 80 ? 'text-cyan-400' : 'text-orange-400'}`}>{averageUptime}%</span>
+                      Current Session: <span className={`font-bold ${uptime >= 80 ? 'text-cyan-400' : 'text-orange-400'}`}>{uptime}%</span>
+                      <span className="text-xs text-gray-600 ml-2">(Historical data not yet tracked)</span>
                     </p>
                   </div>
                   <div className="flex gap-1 bg-black/50 p-1 rounded-xl w-full md:w-auto">

@@ -5,4 +5,13 @@ import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
   plugins: [tailwindcss(), reactRouter(), tsconfigPaths()],
+  
+  // Critical: Handle Privy SSR issues
+  ssr: {
+    noExternal: ['@privy-io/react-auth', '@farcaster/miniapp-sdk'],
+  },
+  
+  optimizeDeps: {
+    include: ['@privy-io/react-auth'],
+  },
 });
