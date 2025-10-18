@@ -2,6 +2,7 @@ import { useUserOperation } from '~/hooks/useUserOperation';
 import { useState, useEffect } from 'react';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
 import useMetaMaskSmartAccount from '../hooks/useMetamaskSmartAccount';
+import { usePersistentTasks, useAutoSaveSession } from '~/hooks/usePersistentTasks';
 
 // Define Task interface
 interface Task {
@@ -33,7 +34,7 @@ export default function MinimalBuilderUptime() {
   // MetaMask Smart Account Integration
   const { smartAccount, isCreatingAccount, error: smartAccountError } = useMetaMaskSmartAccount();
   const { sendUserOperation, isSending, txHash, error: txError } = useUserOperation(smartAccount);
-  
+
   // TODO: Uncomment above when hooks are implemented
   // const smartAccount = null;
   // const isCreatingAccount = false;
@@ -46,7 +47,13 @@ export default function MinimalBuilderUptime() {
 
   // Task State
   const [taskInput, setTaskInput] = useState('');
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const {
+    tasks,
+    loading: tasksLoading,
+    addTask,
+    updateTask,
+    deleteTask
+  } = usePersistentTasks();
   const [energy, setEnergy] = useState(4);
   const [focusSeconds, setFocusSeconds] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
@@ -79,30 +86,28 @@ export default function MinimalBuilderUptime() {
   }, [isTimerRunning]);
 
   // Task functions
-  const handleAddTask = (): void => {
+  const handleAddTask = async (): Promise<void> => {
     if (taskInput.trim()) {
-      const newTask: Task = {
-        id: Date.now(),
-        text: taskInput,
-        completed: false,
-        hasBlocker: false
-      };
-      setTasks([...tasks, newTask]);
+      await addTask(taskInput.trim());
       setTaskInput('');
     }
   };
 
-  const toggleTask = (id: number): void => {
-    setTasks(tasks.map(task =>
-      task.id === id ? { ...task, completed: !task.completed } : task
-    ));
+  const toggleTask = async (id: number): Promise<void> => {
+    const task = tasks.find(t => t.id === id);
+    if (task) {
+      await updateTask(id, { completed: !task.completed });
+    }
   };
 
-  const toggleBlocker = (id: number): void => {
-    setTasks(tasks.map(task =>
-      task.id === id ? { ...task, hasBlocker: !task.hasBlocker } : task
-    ));
-  };
+  const toggleBlocker = async (id: number): Promise<void> => {
+    const task = tasks.find(t => t.id === id);
+    if (task) {
+      console.log('Before toggle:', { id, hasBlocker: task.hasBlocker });
+      await updateTask(id, { hasBlocker: !task.hasBlocker });
+      console.log('After toggle should be:', { id, hasBlocker: !task.hasBlocker });
+    }
+  };;
 
   const takeBreak = (): void => {
     setLastBreak(Date.now());
@@ -142,7 +147,7 @@ export default function MinimalBuilderUptime() {
       alert('Please enter recipient and amount');
       return;
     }
-    
+
     try {
       // TODO: Uncomment when hooks are ready
       // await sendUserOperation(testRecipient, testAmount);
@@ -203,7 +208,7 @@ export default function MinimalBuilderUptime() {
               <div className="text-xs text-gray-500 hidden md:block">Real Productivity Tracking</div>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2">
             {/* Smart Account Badge */}
             {authenticated && smartAccount && (
@@ -221,7 +226,7 @@ export default function MinimalBuilderUptime() {
                 🔄 Creating Smart Account...
               </div>
             )}
-            
+
             {/* Privy Connect Button with Farcaster Profile */}
             <button
               onClick={authenticated ? logout : login}
@@ -232,9 +237,9 @@ export default function MinimalBuilderUptime() {
                 <span className="flex items-center gap-2">
                   {farcasterPfp ? (
                     <>
-                      <img 
-                        src={farcasterPfp} 
-                        alt={farcasterUsername || 'Profile'} 
+                      <img
+                        src={farcasterPfp}
+                        alt={farcasterUsername || 'Profile'}
                         className="w-5 h-5 md:w-6 md:h-6 rounded-full border-2 border-cyan-400"
                       />
                       <span className="hidden md:inline">
@@ -312,7 +317,7 @@ export default function MinimalBuilderUptime() {
                     Your account is powered by ERC-4337 Account Abstraction
                   </p>
                 </div>
-                
+
                 <div className="grid gap-3">
                   <div>
                     <div className="text-xs text-gray-500 font-semibold uppercase mb-1">
@@ -322,7 +327,7 @@ export default function MinimalBuilderUptime() {
                       {smartAccount.eoaAddress}
                     </div>
                   </div>
-                  
+
                   <div>
                     <div className="text-xs text-gray-500 font-semibold uppercase mb-1">
                       Smart Account Address
@@ -340,7 +345,7 @@ export default function MinimalBuilderUptime() {
                   >
                     🚀 Test Transaction
                   </button>
-                  
+
                   <a
                     href={`https://sepolia.etherscan.io/address/${smartAccount.smartAccountAddress}`}
                     target="_blank"
@@ -716,18 +721,18 @@ export default function MinimalBuilderUptime() {
                       <div
                         key={task.id}
                         className={`group p-3 md:p-4 rounded-xl border-2 transition-all duration-300 ${task.completed
-                            ? 'bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border-cyan-500/40 shadow-lg shadow-cyan-500/10'
-                            : task.hasBlocker
-                              ? 'bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/40 shadow-lg shadow-red-500/10'
-                              : 'bg-black/40 border-gray-700 hover:border-gray-600 hover:bg-black/60'
+                          ? 'bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border-cyan-500/40 shadow-lg shadow-cyan-500/10'
+                          : task.hasBlocker
+                            ? 'bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/40 shadow-lg shadow-red-500/10'
+                            : 'bg-black/40 border-gray-700 hover:border-gray-600 hover:bg-black/60'
                           }`}
                       >
                         <div className="flex items-center gap-3">
                           <button
                             onClick={() => toggleTask(task.id)}
                             className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all duration-300 flex-shrink-0 ${task.completed
-                                ? 'bg-gradient-to-br from-cyan-500 to-blue-500 border-cyan-500 shadow-lg shadow-cyan-500/50'
-                                : 'border-gray-600 hover:border-cyan-500 hover:scale-110'
+                              ? 'bg-gradient-to-br from-cyan-500 to-blue-500 border-cyan-500 shadow-lg shadow-cyan-500/50'
+                              : 'border-gray-600 hover:border-cyan-500 hover:scale-110'
                               }`}
                           >
                             {task.completed && <span className="text-white text-xs font-bold">✓</span>}
@@ -739,8 +744,8 @@ export default function MinimalBuilderUptime() {
                           <button
                             onClick={() => toggleBlocker(task.id)}
                             className={`text-lg px-2.5 py-1 rounded-lg transition-all duration-300 flex-shrink-0 ${task.hasBlocker
-                                ? 'bg-gradient-to-r from-red-500/20 to-orange-500/20 border border-red-500/50 shadow-lg shadow-red-500/20 scale-110'
-                                : 'text-gray-600 hover:text-gray-400 hover:scale-110'
+                              ? 'bg-gradient-to-r from-red-500/20 to-orange-500/20 border border-red-500/50 shadow-lg shadow-red-500/20 scale-110'
+                              : 'text-gray-600 hover:text-gray-400 hover:scale-110'
                               }`}
                           >
                             {task.hasBlocker ? '🚨' : '⚠️'}
