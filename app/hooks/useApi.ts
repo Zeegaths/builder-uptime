@@ -7,33 +7,22 @@ export function useApi() {
 
   useEffect(() => {
     const updateToken = async () => {
-      console.log('🔑 useApi effect:', { ready, authenticated });
-
-      if (!ready) {
-        console.log('⏳ Privy not ready, skipping token update');
-        return;
-      }
+      if (!ready) return;
 
       if (authenticated) {
         try {
           const token = await getAccessToken();
           if (token) {
             apiClient.setToken(token);
-            console.log('✅ Token set successfully');
-          } else {
-            console.log('⚠️ No token received from Privy');
           }
         } catch (error) {
-          console.error('❌ Failed to get access token:', error);
+          console.error('Failed to get access token:', error);
         }
-      } else {
-        apiClient.setToken(null);
-        console.log('🔓 Token cleared (not authenticated)');
       }
     };
 
     updateToken();
-  }, [authenticated, ready, getAccessToken]);
+  }, [authenticated, getAccessToken]);
 
   return apiClient;
 }
