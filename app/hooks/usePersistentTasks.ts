@@ -9,30 +9,36 @@ interface Task {
   hasBlocker: boolean;
 }
 
-// Hook for persistent tasks (synced with backend)
 export function usePersistentTasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const api = useApi();
-  const { authenticated } = usePrivy();
+  const { authenticated, ready } = usePrivy(); // ← Add ready
 
-  // Load tasks from backend on mount
+  // Load tasks when BOTH ready AND authenticated
   useEffect(() => {
+    if (!ready) {
+      // Still loading Privy
+      return;
+    }
+
     if (authenticated) {
       loadTasks();
     } else {
       setLoading(false);
+      setTasks([]); // Clear tasks if not authenticated
     }
-  }, [authenticated]);
+  }, [authenticated, ready]); // ← Add ready to dependencies
 
   const loadTasks = async () => {
+    setLoading(true);
     try {
       const data = await api.getTasks();
       const formattedTasks = data.map((t: any) => ({
         id: t.id,
         text: t.text,
         completed: t.completed,
-        hasBlocker: t.hasBlocker || false,  // Use hasBlocker and add fallback
+        hasBlocker: t.hasBlocker || false,
       }));
       setTasks(formattedTasks);
     } catch (error) {

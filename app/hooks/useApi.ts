@@ -3,10 +3,12 @@ import { usePrivy } from '@privy-io/react-auth';
 import { apiClient } from 'lib/api';
 
 export function useApi() {
-  const { authenticated, getAccessToken } = usePrivy();
+  const { authenticated, ready, getAccessToken } = usePrivy();
 
   useEffect(() => {
     const updateToken = async () => {
+      if (!ready) return;
+
       if (authenticated) {
         try {
           const token = await getAccessToken();
