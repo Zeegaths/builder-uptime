@@ -1,38 +1,35 @@
-// hooks/useApi.ts
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
-import { apiClient } from '~/lib/api';
+import { apiClient } from 'lib/api';
 
 export function useApi() {
   const { authenticated, ready, getAccessToken } = usePrivy();
-  const isSettingToken = useRef(false);
 
   useEffect(() => {
     const updateToken = async () => {
-      if (!ready || isSettingToken.current) {
+      if (!ready) {
+        console.log('⏳ Waiting for Privy...');
         return;
       }
 
       if (authenticated) {
-        isSettingToken.current = true;
         try {
+          console.log('🔑 Getting token...');
           const token = await getAccessToken();
-          if (token) {
-            apiClient.setToken(token);
-            console.log('✅ Token set');
-          }
+          apiClient.setToken(token);
+          console.log('✅ Token initialized');
         } catch (error) {
           console.error('❌ Failed to get token:', error);
-        } finally {
-          isSettingToken.current = false;
+          apiClient.setToken(null); // Resolve anyway to prevent hanging
         }
       } else {
+        console.log('❌ Not authenticated');
         apiClient.setToken(null);
       }
     };
 
     updateToken();
-  }, [authenticated, ready]);
+  }, [authenticated, ready, getAccessToken]);
 
   return apiClient;
 }
