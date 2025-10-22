@@ -25,6 +25,7 @@ export default function MinimalBuilderUptime() {
   const userWallet = wallets[0];
   const walletAddress = userWallet?.address;
 
+
   // Get Farcaster profile from Privy user data
   const farcasterAccount = user?.farcaster;
   const farcasterPfp = farcasterAccount?.pfp;
@@ -52,7 +53,7 @@ export default function MinimalBuilderUptime() {
     loading: tasksLoading,
     addTask,
     updateTask,
-    deleteTask
+    deleteTask,
   } = usePersistentTasks();
   const [energy, setEnergy] = useState(4);
   const [focusSeconds, setFocusSeconds] = useState(0);
@@ -64,6 +65,16 @@ export default function MinimalBuilderUptime() {
   // AI Analysis state (for when useBuilderAgent is implemented)
   const [analysis, setAnalysis] = useState<AIAnalysis | null>(null);
   const [showAIInsight, setShowAIInsight] = useState(false);
+
+  useEffect(() => {
+    console.log('📊 Component state:', {
+      ready,
+      authenticated,
+      userId: user?.id,
+      tasksCount: tasks.length,
+      tasksLoading
+    });
+  }, [ready, authenticated, user, tasks, tasksLoading]);
 
   // Timer effect
   useEffect(() => {
