@@ -1,4 +1,6 @@
 import { useUserOperation } from '~/hooks/useUserOperation';
+import { useShadeAgent } from '~/hooks/useShadeAgent';
+import { BuilderChat } from '~/components/BuilderChat';
 import { useState, useEffect } from 'react';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
 import useMetaMaskSmartAccount from '../hooks/useMetamaskSmartAccount';
@@ -24,6 +26,9 @@ export default function MinimalBuilderUptime() {
   const { wallets } = useWallets();
   const userWallet = wallets[0];
   const walletAddress = userWallet?.address;
+  const isMetaMask = userWallet?.walletClientType === 'metamask' &&
+    userWallet?.connectorType === 'injected';
+
 
 
   // Get Farcaster profile from Privy user data
@@ -33,12 +38,10 @@ export default function MinimalBuilderUptime() {
   const farcasterDisplayName = farcasterAccount?.displayName;
 
   // MetaMask Smart Account Integration
-  const { smartAccount, isCreatingAccount, error: smartAccountError } = useMetaMaskSmartAccount();
+  const { smartAccount, isCreatingAccount, error: smartAccountError } =
+    useMetaMaskSmartAccount(isMetaMask);
   const { sendUserOperation, isSending, txHash, error: txError } = useUserOperation(smartAccount);
 
-  // TODO: Uncomment above when hooks are implemented
-  // const smartAccount = null;
-  // const isCreatingAccount = false;
 
   // UI State
   const [showSmartAccountInfo, setShowSmartAccountInfo] = useState(false);
@@ -65,6 +68,11 @@ export default function MinimalBuilderUptime() {
   // AI Analysis state (for when useBuilderAgent is implemented)
   const [analysis, setAnalysis] = useState<AIAnalysis | null>(null);
   const [showAIInsight, setShowAIInsight] = useState(false);
+
+  // Shade Agent integration
+  const [showChat, setShowChat] = useState(false);
+  const [burnoutWarning, setBurnoutWarning] = useState<{ level: string; action: string } | null>(null);
+  const { logWellness, isLoading: agentLoading } = useShadeAgent();
 
   useEffect(() => {
     console.log('📊 Component state:', {
@@ -95,6 +103,26 @@ export default function MinimalBuilderUptime() {
     }
     return () => clearInterval(interval);
   }, [isTimerRunning]);
+
+
+  // Log wellness data to Shade Agent
+  useEffect(() => {
+    if (authenticated && user?.id) {
+      logWellness({
+        userId: user.id,
+        taskId: 'session-' + Date.now(),
+        energyLevel: energy,
+        focusQuality: Math.min(5, Math.floor(focusSeconds / 1200) + 1),
+      }).then((result) => {
+        if (result?.burnoutRisk && result.burnoutRisk !== 'LOW') {
+          setBurnoutWarning({
+            level: result.burnoutRisk,
+            action: result.recommendation
+          });
+        }
+      });
+    }
+  }, [energy, authenticated, user]);
 
   // Task functions
   const handleAddTask = async (): Promise<void> => {
@@ -221,6 +249,17 @@ export default function MinimalBuilderUptime() {
           </div>
 
           <div className="flex items-center gap-2">
+
+            {/* AI Coach Button */}
+            {authenticated && (
+              <button
+                onClick={() => setShowChat(true)}
+                className="px-3 md:px-4 py-1.5 md:py-2 bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-500/50 rounded-lg md:rounded-xl text-xs md:text-sm font-medium text-purple-400 hover:from-purple-500/30 hover:to-pink-500/30 transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/20"
+              >
+                💬 AI Coach
+              </button>
+            )}
+            
             {/* Smart Account Badge */}
             {authenticated && smartAccount && (
               <button
@@ -864,6 +903,18 @@ export default function MinimalBuilderUptime() {
           </div>
         </div>
       </div>
+
+      {/* Chat Modal */}
+      {showChat && authenticated && user?.id && (
+        <BuilderChat
+          userId={user.id}
+          tasksCompleted={tasks.filter(t => t.completed).length}
+          streakDays={0}
+          currentEnergy={energy}
+          onClose={() => setShowChat(false)}
+        />
+      )}
     </div>
   );
 }
+
