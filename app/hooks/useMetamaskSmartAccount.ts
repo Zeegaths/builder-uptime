@@ -5,17 +5,30 @@ import { createBundlerClient } from 'viem/account-abstraction';
 import { Implementation, toMetaMaskSmartAccount } from '@metamask/delegation-toolkit';
 import { useWallets } from '@privy-io/react-auth';
 
-export default function useMetaMaskSmartAccount() {
+// ✅ ADD enabled parameter here
+export default function useMetaMaskSmartAccount(enabled: boolean = true) {
   const { wallets } = useWallets();
   const [smartAccount, setSmartAccount] = useState(null);
   const [isCreatingAccount, setIsCreatingAccount] = useState(false);
   const [error, setError] = useState(null);
 
-  // Get the connected wallet from Privy
   const connectedWallet = wallets[0];
 
+  // ✅ Single useEffect with enabled check at the top
   useEffect(() => {
-    if (!connectedWallet) return;
+    // ✅ Check if feature is enabled first
+    if (!enabled) {
+      console.log('⏭️ Smart account disabled for this wallet type');
+      return;
+    }
+
+    // ✅ Then check if wallet is connected
+    if (!connectedWallet) {
+      console.log('⏳ No wallet connected yet');
+      return;
+    }
+
+    console.log('✅ Creating smart account for MetaMask user');
 
     const setupSmartAccount = async () => {
       try {
@@ -29,15 +42,17 @@ export default function useMetaMaskSmartAccount() {
         });
 
         // 2. Set up Bundler Client
-        // Replace with your actual bundler RPC URL
         const bundlerClient = createBundlerClient({
           client: publicClient,
-          transport: http(process.env.NEXT_PUBLIC_BUNDLER_RPC_URL || 'https://bundler.biconomy.io/api/v2/11155111/nJPK7B3ru.dd7f7861-190d-41bd-af80-6877f74b8f44'),
+          transport: http(
+            import.meta.env.VITE_BUNDLER_RPC_URL ||
+            'https://bundler.biconomy.io/api/v2/11155111/nJPK7B3ru.dd7f7861-190d-41bd-af80-6877f74b8f44'
+          ),
         });
 
         // 3. Get the wallet provider from Privy
         const provider = await connectedWallet.getEthereumProvider();
-        
+
         // 4. Create wallet client
         const walletClient = createWalletClient({
           chain: sepolia,
@@ -47,7 +62,7 @@ export default function useMetaMaskSmartAccount() {
         // Get accounts
         const [address] = await walletClient.getAddresses();
 
-        // 5. Create MetaMask Smart Account (Hybrid implementation)
+        // 5. Create MetaMask Smart Account
         const account = await toMetaMaskSmartAccount({
           client: publicClient,
           implementation: Implementation.Hybrid,
@@ -78,7 +93,7 @@ export default function useMetaMaskSmartAccount() {
     };
 
     setupSmartAccount();
-  }, [connectedWallet]);
+  }, [connectedWallet, enabled]); // ✅ Add enabled to dependencies
 
   return {
     smartAccount,

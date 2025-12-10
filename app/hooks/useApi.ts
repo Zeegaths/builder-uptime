@@ -23,7 +23,7 @@ export function useApi() {
           apiClient.setToken(null); // Resolve anyway to prevent hanging
         }
       } else {
-        console.log('❌ Not authenticated');
+        console.log('🔓 Clearing token - user logged out'); // ADD THIS
         apiClient.setToken(null);
       }
     };
